@@ -36,41 +36,108 @@ const formatCommandArgs = (args) => {
     return `(${commandArgs.join(', ')})`
 }
 
-const displayTestConsole = (test, testSlownessThreshold) => {
+
+// DISPLAY FUNCTIONS
+
+const testDataAsString = (test, testSlownessThreshold) => {
     const testStatus = statusIcon(test.state, test.duration, testSlownessThreshold)
-    const currentRetry = test.retries > 0 ? ` (#Current retry: ${test.currentRetry})` : ''
+    let testDataStr = test.retries > 0 ? `
+ ▪️ (#Current retry: ${test.currentRetry})` : ''
+
     if (test.invocationDetails) {
-      // The retries do not have test.invocationDetails
-      console.log(`-----------------------------------------------------------------------------------------------------------`)
-      console.log(`TEST FILE: "${test.invocationDetails.relativeFile}"`)
+        // The retries do not have test.invocationDetails
+        testDataStr = `
+-----------------------------------------------------------------------------------------------------------
+${testStatus} TEST TITLE: "${test.title}" | DURATION: ${test.duration} ms | STATUS: ${test.state.toUpperCase()} - (File: "${test.invocationDetails.relativeFile}")
+-----------------------------------------------------------------------------------------------------------
+${testDataStr}`
     }
-    console.log(`   ${testStatus} TEST TITLE: "${test.title}"${currentRetry} | DURATION: ${test.duration} ms | STATUS: ${test.state.toUpperCase()} `)
+    return testDataStr
 }
 
-const displayCommandConsole = (commandInfo, commandSlownessThreshold) => {
-    const commandType = commandInfo.commandQuery ? `Query:   ` : `Command: `
-    const commandName = `${commandInfo.commandName.toUpperCase()}`
-    const commandArgs = `${formatCommandArgs(commandInfo.commandArgs)}`
+const commandDataAsList = (commands, commandSlownessThreshold) => {
+    const list = []
 
-    let assertionCommand = ''
-    const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand
-    if (commandCurrentAssertionCommand) {
-        assertionCommand = `.${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`
-    }
+    commands.forEach(commandInfo => {
+        const stateIcon = statusIcon(commandInfo.commandState, commandInfo.commandDuration, commandSlownessThreshold)
+        const commandType = commandInfo.commandQuery ? `Query:   ` : `Command: `
+        const commandName = `${commandInfo.commandName.toUpperCase()}`
+        const commandArgs = `${formatCommandArgs(commandInfo.commandArgs)}`
 
-    const commandEnqueuedTime = ` | Enqueued on: ${new Date(commandInfo.commandEnqueuedTime).toISOString()}`
-    const runTime = commandInfo.commandDuration ? ` | Run time: ${commandInfo.commandDuration} ms` : ''
-    const state = ` | State: ${(commandInfo.commandState || '**NEVER RUN**').toUpperCase()}`
-    const retries = commandInfo.commandRetries ? ` | #Internal retries: ${commandInfo.commandRetries}` : ''
-    const status = statusIcon(commandInfo.commandState, commandInfo.commandDuration, commandSlownessThreshold)
+        let assertionCommand = ''
+        const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand
+        if (commandCurrentAssertionCommand) {
+            assertionCommand = `.${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`
+        }
 
-    console.log(`      ${status} ${commandType}${commandName}${commandArgs}${assertionCommand}${commandEnqueuedTime}${runTime}${state}${retries}`)
+        const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.commandEnqueuedTime).toISOString()}`
+        const runTime = commandInfo.commandDuration ? ` | Run time: ${commandInfo.commandDuration} ms` : ''
+        const state = ` | State: ${(commandInfo.commandState || '**NEVER RUN**').toUpperCase()}`
+        const retries = commandInfo.commandRetries ? ` | #Internal retries: ${commandInfo.commandRetries}` : ''
+
+        list.push(`      ${stateIcon} ${commandType}${commandName}${commandArgs}${assertionCommand}${commandEnqueuedTime}${runTime}${state}${retries}`)
+    })
+    return list
+}
+
+
+const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
+    const { test, testSlownessThreshold } = testData
+    const { commands, commandSlownessThreshold } = commandsData
+
+    // Display test info in browser console
+    // ------------------------------------
+    console.log(testDataAsString(test, testSlownessThreshold))
+
+    // Display commands executed in the browser console
+    // ------------------------------------------------
+    console.log(commandDataAsList(commands, commandSlownessThreshold).join('\n'))
+    //commandDataAsList(commands, commandSlownessThreshold).forEach(line => console.log(line));
+}
+
+
+const commandDataAsTable = (commands, commandSlownessThreshold) => {
+    const tableRows = commands.map(commandInfo => {
+        let assertionCommand = '';
+        const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand;
+        if (commandCurrentAssertionCommand) {
+            assertionCommand = `.${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`;
+        }
+
+        const stateIcon = statusIcon(commandInfo.commandState, commandInfo.commandDuration, commandSlownessThreshold)
+        const state = (commandInfo.commandState || '**NEVER RUN**').toUpperCase()
+
+        return {
+            "Type": `${stateIcon} ${commandInfo.commandQuery ? 'Query' : 'Command'}`,
+            // "Name": commandInfo.commandName.toUpperCase(),
+            // "Args": formatCommandArgs(commandInfo.commandArgs),
+            // "Assertion Commands": assertionCommand,
+            "Command": commandInfo.commandName.toUpperCase() +
+                       formatCommandArgs(commandInfo.commandArgs) +
+                       assertionCommand,
+            "Enqueued Time": new Date(commandInfo.commandEnqueuedTime).toISOString(),
+            "Run Time": commandInfo.commandDuration ? `${commandInfo.commandDuration} ms` : ``,
+            "State": (commandInfo.commandState || '**NEVER RUN**').toUpperCase(),
+            "#Internal retries": commandInfo.commandRetries ? commandInfo.commandRetries : ``,
+        }
+    });
+    return tableRows
+}
+
+const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
+    const { test, testSlownessThreshold } = testData
+    const { commands, commandSlownessThreshold } = commandsData
+
+    // Display test info in browser console
+    // ------------------------------------
+    console.log(testDataAsString(test, testSlownessThreshold))
+
+    // Display commands executed in the browser console
+    // ------------------------------------------------
+    console.table(commandDataAsTable(commands, commandSlownessThreshold));
 }
 
 export default {
-    formatCommandArgs,
-    displayTestConsole,
-    displayCommandConsole,
-    statusIcon,
-    trimString,
+    displayTestAuditAsListBrowserConsole,
+    displayTestAuditAsTableBrowserConsole,
 }

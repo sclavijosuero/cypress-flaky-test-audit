@@ -6,6 +6,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   it.only('test 1', () => {
+    const timeToWait = 500;
+
     cy.get('input[name="username"]').type('paul', { delay: 500 }) // ✔️ PASS
     cy.get('input[name="password"]').type('mcCartney', { delay: 0, something: 'else' }) // ✔️ PASS
 
@@ -13,11 +15,13 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .should('have.value', 'paul') // ✔️ PASS
       .and('have.class', 'nowayjose') // ❌ FAIL (class not found)
 
-    cy.wait(500) // ⛔ NEVER RUN
+    cy.wait(timeToWait) // ⛔ NEVER RUN
     cy.get('input[type="submit"]').click() // ⛔ NEVER RUN
   })
 
   it('test 2', () => {
+    const timeToWait = 1000;
+
     cy.get('input[name="username"]').type('ringo') // ✔️ PASS
     cy.get('input[name="password"]').type('starr') // ✔️ PASS
 
@@ -26,14 +30,16 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
         .click() // ✔️ PASS
     })
 
-    cy.wait(1000) // ✔️ PASS
+    cy.wait(timeToWait) // ✔️ PASS
   })
 
   it.only('test 3', () => {
+    const timeToWait = 1000;
+
     cy.get('input[name="username"]')
       .should('be.visible') // ✔️ PASS
 
-    cy.wait(3000) // ✔️ PASS
+    cy.wait(timeToWait) // ✔️ PASS
     cy.get('input[name="password"]')
       .should('be.visible') // ✔️ PASS
   })
@@ -57,6 +63,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   it.only('test 6', () => {
+    const timeToWait = 200;
     cy.get('input[name="username"]').type('ringo') // ✔️ PASS
     cy.get('input[name="password"]').type('starr', { delay: 400 }) // ✔️ PASS
 
@@ -67,7 +74,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
         .should('include', 'not-my-bank') // ❌ FAIL (url not found)
     })
 
-    cy.wait(200) // ⛔ NEVER RUN
+    cy.wait(timeToWait) // ⛔ NEVER RUN
   })
 
 })
