@@ -1,6 +1,6 @@
 const { defineConfig } = require("cypress");
 
-import addFlakyTestAuditTasks from './src/tasks';
+const addFlakyTestAuditTasks = require('./src/tasks.js');
 
 module.exports = defineConfig({
   viewportWidth: 1920,
@@ -8,7 +8,7 @@ module.exports = defineConfig({
   watchForFileChanges: false,
 
   retries: {
-    runMode: 1,
+    runMode: 0,
     openMode: 1,
   },
 

@@ -39,19 +39,40 @@ const formatCommandArgs = (args) => {
 
 // DISPLAY FUNCTIONS
 
-const testDataAsString = (test, testSlownessThreshold) => {
-    const testStatus = statusIcon(test.state, test.duration, testSlownessThreshold)
-    let testDataStr = test.retries > 0 ? `
- ▪️ (#Current retry: ${test.currentRetry})` : ''
+// const testDataAsString = (test, testSlownessThreshold) => {
+//     const testStatus = statusIcon(test.state, test.duration, testSlownessThreshold)
+//     let testDataStr = test.retries > 0 ? `
+// ▪️ (#Current retry: ${test.currentRetry})` : ''
 
-    if (test.invocationDetails) {
-        // The retries do not have test.invocationDetails
-        testDataStr = `
------------------------------------------------------------------------------------------------------------
-${testStatus} TEST TITLE: "${test.title}" | DURATION: ${test.duration} ms | STATUS: ${test.state.toUpperCase()} - (File: "${test.invocationDetails.relativeFile}")
------------------------------------------------------------------------------------------------------------
-${testDataStr}`
+//     if (test.invocationDetails) {
+//         // The retries do not have test.invocationDetails
+//         testDataStr = `
+// -----------------------------------------------------------------------------------------------------------
+// ${testStatus} TEST TITLE: "${test.title}" | DURATION: ${test.duration} ms | STATUS: ${test.state.toUpperCase()} - (File: "${test.invocationDetails.relativeFile}")
+// -----------------------------------------------------------------------------------------------------------
+// ${testDataStr}`
+//     }
+//     return testDataStr
+// }
+
+const testDataAsString = (test, testSlownessThreshold) => {
+
+    const testStatus = statusIcon(test.state, test.duration, testSlownessThreshold)
+    const currentRetry = test._retries > 0 ? ` | (#Current retry: ${test._currentRetry})` : ''
+
+    let relativeFile
+    if (test._currentRetry === 0) {
+        relativeFile = test.invocationDetails.relativeFile
+    } else {
+        // The retries do not have test.invocationDetails (but the parent)
+        relativeFile = test.parent.invocationDetails.relativeFile
     }
+
+    const testDataStr = `
+------------------------------------------------------------------------------------------------------------------------------
+${testStatus} TEST TITLE: "${test.title}"${currentRetry} | DURATION: ${test.duration} ms | STATUS: ${test.state.toUpperCase()} - (File: "${relativeFile}")
+------------------------------------------------------------------------------------------------------------------------------`
+
     return testDataStr
 }
 
@@ -75,7 +96,7 @@ const commandDataAsList = (commands, commandSlownessThreshold) => {
         const state = ` | State: ${(commandInfo.commandState || '**NEVER RUN**').toUpperCase()}`
         const retries = commandInfo.commandRetries ? ` | #Internal retries: ${commandInfo.commandRetries}` : ''
 
-        list.push(`      ${stateIcon} ${commandType}${commandName}${commandArgs}${assertionCommand}${commandEnqueuedTime}${runTime}${state}${retries}`)
+        list.push(`      ${stateIcon}  ${commandType}${commandName}${commandArgs}${assertionCommand}${commandEnqueuedTime}${runTime}${state}${retries}`)
     })
     return list
 }
@@ -92,7 +113,19 @@ const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
     // Display commands executed in the browser console
     // ------------------------------------------------
     console.log(commandDataAsList(commands, commandSlownessThreshold).join('\n'))
-    //commandDataAsList(commands, commandSlownessThreshold).forEach(line => console.log(line));
+}
+
+const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
+    const { test, testSlownessThreshold } = testData
+    const { commands, commandSlownessThreshold } = commandsData
+
+    // Display test info in terminal console
+    // -------------------------------------
+    cy.task('displayTestDataInTerminal', testDataAsString(test, testSlownessThreshold), { log: false })
+
+    // Display commands executed in the terminal console
+    // -------------------------------------------------
+    cy.task('displayListInTerminal', commandDataAsList(commands, commandSlownessThreshold), { log: false })
 }
 
 
@@ -108,7 +141,7 @@ const commandDataAsTable = (commands, commandSlownessThreshold) => {
         const state = (commandInfo.commandState || '**NEVER RUN**').toUpperCase()
 
         return {
-            "Type": `${stateIcon} ${commandInfo.commandQuery ? 'Query' : 'Command'}`,
+            "Type": `${stateIcon}  ${commandInfo.commandQuery ? 'Query' : 'Command'}`,
             // "Name": commandInfo.commandName.toUpperCase(),
             // "Args": formatCommandArgs(commandInfo.commandArgs),
             // "Assertion Commands": assertionCommand,
@@ -137,7 +170,44 @@ const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
     console.table(commandDataAsTable(commands, commandSlownessThreshold));
 }
 
+const displayTestAuditAsTableTerminalConsole = (testData, commandsData) => {
+    const { test, testSlownessThreshold } = testData
+    const { commands, commandSlownessThreshold } = commandsData
+
+    // Display test info in terminal console
+    // -------------------------------------
+    cy.task('displayTestDataInTerminal', testDataAsString(test, testSlownessThreshold), { log: false })
+
+    // Display commands executed in the browser console
+    // ------------------------------------------------
+    cy.task('displayTableInTerminal', commandDataAsTable(commands, commandSlownessThreshold), { log: false });
+}
+
+const buildListConsolePayload = (testData, commandsData) => {
+    const { test, testSlownessThreshold } = testData
+    const { commands, commandSlownessThreshold } = commandsData
+
+    return {
+        testInfo: testDataAsString(test, testSlownessThreshold),
+        commandsInfo: commandDataAsList(commands, commandSlownessThreshold),
+    }
+}
+
+const buildTableConsolePayload = (testData, commandsData) => {
+    const { test, testSlownessThreshold } = testData
+    const { commands, commandSlownessThreshold } = commandsData
+
+    return {
+        testInfo: testDataAsString(test, testSlownessThreshold),
+        commandsInfo: commandDataAsTable(commands, commandSlownessThreshold),
+    }
+}
+
 export default {
     displayTestAuditAsListBrowserConsole,
+    displayTestAuditAsListTerminalConsole,
     displayTestAuditAsTableBrowserConsole,
+    displayTestAuditAsTableTerminalConsole,
 }
+
+

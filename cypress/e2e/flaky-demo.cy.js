@@ -9,7 +9,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     const timeToWait = 500;
 
     cy.get('input[name="username"]').type('paul', { delay: 500 }) // ✔️ PASS
-    cy.get('input[name="password"]').type('mcCartney', { delay: 0, something: 'else' }) // ✔️ PASS
+    cy.get('input[name="password"]').type('mcCartney', { delay: 0 }) // ✔️ PASS
 
     cy.get('input[name="username"]') // ✔️ PASS
       .should('have.value', 'paul') // ✔️ PASS
@@ -33,7 +33,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ✔️ PASS
   })
 
-  it.only('test 3', () => {
+  it('test 3', () => {
     const timeToWait = 1000;
 
     cy.get('input[name="username"]')
@@ -45,8 +45,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   it('test 4', () => {
-    cy.get('input[name="username"]').type('ringo') // ✔️ PASS
-    cy.get('input[name="password"]').type('starr') // ✔️ PASS
+    cy.get('input[name="username"]').type('john') // ✔️ PASS
+    cy.get('input[name="password"]').type('lennon') // ✔️ PASS
 
     // Using .then() for demo purposes
     cy.then(() => {
@@ -62,8 +62,9 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .should('not.have.value', 'george') // ❌ FAIL
   })
 
-  it.only('test 6', () => {
+  it('test 6', () => {
     const timeToWait = 200;
+
     cy.get('input[name="username"]').type('ringo') // ✔️ PASS
     cy.get('input[name="password"]').type('starr', { delay: 400 }) // ✔️ PASS
 

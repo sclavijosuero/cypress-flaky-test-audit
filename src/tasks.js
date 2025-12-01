@@ -2,12 +2,17 @@ const addFlakyTestAuditTasks = (on) => {
 
     on("task", {
 
-        "displayStringTerminal": (str)=> {
-            console.log(str)
+        displayTestDataInTerminal(testData) {
+            console.log(testData)
             return null;
         },
 
-        "displayTableTerminal": (table) => {
+        displayListInTerminal(list) {
+            console.log(list.join('\n'))
+            return null;
+        },
+
+        displayTableInTerminal(table) {
             console.table(table)
             return null;
         }
