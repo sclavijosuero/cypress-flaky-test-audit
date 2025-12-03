@@ -5,7 +5,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.visit('https://parabank.parasoft.com/parabank/index.htm')
   })
 
-  it.only('test 1', () => {
+  it('test 1', () => {
     const timeToWait = 500;
 
     cy.get('input[name="username"]').type('paul', { delay: 500 }) // ✔️ PASS
@@ -62,7 +62,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .should('not.have.value', 'george') // ❌ FAIL
   })
 
-  it('test 6', () => {
+  it.only('test 6', () => {
     const timeToWait = 200;
 
     cy.get('input[name="username"]').type('ringo') // ✔️ PASS
