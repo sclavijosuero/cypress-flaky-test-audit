@@ -10,8 +10,8 @@ const statusIcon = (status, duration, threshold) => {
 
 const formatCommandArgs = (args) => {
     const maxFunctionLength = 40
-    const maxObjectLength = 35
-    const maxStringLength = 35
+    const maxObjectLength = 25
+    const maxStringLength = 25
 
     const commandArgs = args.map(arg => {
         if (typeof arg === 'function') {
@@ -58,6 +58,47 @@ ${testStatus} TEST TITLE: "${test.title}"${currentRetry} | DURATION: ${test.dura
     return testDataStr
 }
 
+
+// const assertionCommandAsString = (commandInfo) => {
+//     console.log('-------assertionCommandAsString')
+//     console.log(commandInfo)
+
+//     let assertionCommand = '';
+//     const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand;
+//     if (commandCurrentAssertionCommand) {
+//         assertionCommand = ` .${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`;
+//     }
+//     return assertionCommand;
+// }
+
+const getAssertionsRecursive = (commandAttributes, originalCommandId) => {
+    console.log('-------getAssertionsRecursive')
+    console.log(commandAttributes)
+    console.log(originalCommandId)
+
+    if (!commandAttributes || !commandAttributes.id || commandAttributes.id === originalCommandId) return '';
+
+    const assertionCommand = getAssertionsRecursive(commandAttributes.prev.attributes, originalCommandId) +
+           ` .${commandAttributes.name.toUpperCase()}${formatCommandArgs(commandAttributes.args)}`;
+    console.log('-------BACK assertionCommand')
+    console.log(assertionCommand)
+    return assertionCommand;
+}
+
+const assertionCommandAsString = (commandInfo) => {
+    console.log('--------------assertionCommandAsString')
+    console.log(commandInfo)
+
+    let assertionCommand = '';
+    
+    const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand
+    if (commandCurrentAssertionCommand) {
+        assertionCommand = getAssertionsRecursive(commandCurrentAssertionCommand.attributes, commandInfo.commandId);
+        // assertionCommand = ` .${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`;
+    }
+    return assertionCommand;
+}
+
 const commandDataAsList = (commands, commandSlownessThreshold) => {
     const list = []
 
@@ -67,11 +108,7 @@ const commandDataAsList = (commands, commandSlownessThreshold) => {
         const commandName = `${commandInfo.commandName.toUpperCase()}`
         const commandArgs = `${formatCommandArgs(commandInfo.commandArgs)}`
 
-        let assertionCommand = ''
-        const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand
-        if (commandCurrentAssertionCommand) {
-            assertionCommand = `.${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`
-        }
+        const assertionCommand = assertionCommandAsString(commandInfo);
 
         const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.commandEnqueuedTime).toISOString()}`
         const runTime = commandInfo.commandDuration ? ` | Run time: ${commandInfo.commandDuration} ms` : ''
@@ -110,14 +147,9 @@ const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
     cy.task('displayListInTerminal', commandDataAsList(commands, commandSlownessThreshold), { log: false })
 }
 
-
 const commandDataAsTable = (commands, commandSlownessThreshold) => {
     const tableRows = commands.map(commandInfo => {
-        let assertionCommand = '';
-        const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand;
-        if (commandCurrentAssertionCommand) {
-            assertionCommand = `.${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`;
-        }
+        const assertionCommand = assertionCommandAsString(commandInfo);
 
         const stateIcon = statusIcon(commandInfo.commandState, commandInfo.commandDuration, commandSlownessThreshold)
         const state = (commandInfo.commandState || '**NEVER RUN**').toUpperCase()

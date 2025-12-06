@@ -19,6 +19,7 @@ const getTestAuditResults = (test) => {
         const commandDuration = (commandExecution.endTime ?? commandExecution.retryTime ?? Date.now()) - commandExecution.startTime
 
         const commandInfo = {
+            command: command,
             commandEnqueuedTime: commandExecution.enqueuedTime,
             commandDuration,
             commandRetries: commandExecution.retries,
@@ -43,6 +44,7 @@ const getTestAuditResults = (test) => {
 
         if (!commandExecuted) {
             const commandInfo = {
+                command: commandEnqueued.command,
                 commandEnqueuedTime: commandEnqueued.enqueuedTime,
                 commandDuration: null,
                 commandRetries: null,

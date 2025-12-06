@@ -13,9 +13,10 @@
 // https://on.cypress.io/configuration
 // ***********************************************************
 
+// Import the cypress-flaky-test-audit plugin
+import '../../src/index.js'
+
 // Import commands.js using ES2015 syntax:
 import './commands'
-
-import '../../src/index.js'
 
 
