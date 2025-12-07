@@ -15,8 +15,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     })
 
     Cypress.on('command:enqueued', (command) => {
-        // console.log('................. command:enqueued -> ' + command.name + ' ' + command.args + ' ' + command.id)
-        // console.log(command)
+        console.log('................. command:enqueued -> ' + command.name + ' ' + command.args + ' ' + command.id)
+        console.log(command)
 
         if (command.type !== 'assertion') {
             // Note: We skip assertions because they actually go with the query command they are asserting in the property 'attributes.currentAssertionCommand' (eg. '.get().should()')
@@ -34,8 +34,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     });
 
     Cypress.on('command:start', (command) => {
-        // console.log('................. command:start -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
-        // console.log(command)
+        console.log('................. command:start -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
+        console.log(command)
 
         const commandId = command.attributes.id
         const commandEnqueued = specTests.get(currentTestId).commandsEnqueued.get(commandId)
@@ -53,8 +53,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     });
 
     Cypress.on('command:end', (command) => {
-        // console.log('................. command:end -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
-        // console.log(command)
+        console.log('................. command:end -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
+        console.log(command)
 
         const commandId = command.attributes.id
         const commandExecution = specTests.get(currentTestId).commandExecutions.get(commandId)

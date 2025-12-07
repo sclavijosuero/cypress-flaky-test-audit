@@ -72,22 +72,26 @@ ${testStatus} TEST TITLE: "${test.title}"${currentRetry} | DURATION: ${test.dura
 // }
 
 const getAssertionsRecursive = (commandAttributes, originalCommandId) => {
-    console.log('-------getAssertionsRecursive')
-    console.log(commandAttributes)
-    console.log(originalCommandId)
+    // console.log('-------getAssertionsRecursive')
+    // console.log(commandAttributes)
+    // console.log(originalCommandId)
+
+    // if (commandAttributes)
+    //   console.log('-------getAssertionsRecursive (', commandAttributes.name, ')', commandAttributes.args)
 
     if (!commandAttributes || !commandAttributes.id || commandAttributes.id === originalCommandId) return '';
 
+
     const assertionCommand = getAssertionsRecursive(commandAttributes.prev.attributes, originalCommandId) +
            ` .${commandAttributes.name.toUpperCase()}${formatCommandArgs(commandAttributes.args)}`;
-    console.log('-------BACK assertionCommand')
-    console.log(assertionCommand)
+        // console.log('-------BACK assertionCommand')
+        // console.log(assertionCommand)
     return assertionCommand;
 }
 
 const assertionCommandAsString = (commandInfo) => {
-    console.log('--------------assertionCommandAsString')
-    console.log(commandInfo)
+    // console.log('--------------assertionCommandAsString')
+    // console.log(commandInfo)
 
     let assertionCommand = '';
     
