@@ -1,174 +1,172 @@
 import Utils from './utils'
 import { specAudit } from './events'
 
-const defaultTestSlownessThreshold = 5000
-const defaultCommandSlownessThreshold = 1500
+// **********************************************************************************
+// CONSTANTS
+// **********************************************************************************
+
+const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? 5000   // Default 5 seconds
+const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? 1500 // Default 1.5 seconds
+
+// **********************************************************************************
+// FUNCTIONS
+// **********************************************************************************
+
+const findNextCommandEnqueuedData = (currentTestId, currentCommandId) => {
+
+    const testAudit = specAudit.get(currentTestId)  // Is the Map
+
+    let found = false;
+
+    // testAudit is an object with a property 'commandsEnqueued' that is a Map
+    const commandsEnqueued = testAudit.commandsEnqueued;
+
+    for (const [k, v] of commandsEnqueued) {
+        if (found) {
+            return k // This is the command Id for the next entry in the queue after currentCommandId
+        }
+        if (k === currentCommandId) {
+            found = true;
+        }
+    }
+
+    return null; // No next entry
+}
+
+
+const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId }, resultsGraph = new Map()) => {
+    // Return early if command enqueued data is missing or the command is missing
+    if (!commandEnqueuedData || !commandEnqueuedData.command) return resultsGraph
+
+    const runInfo = commandEnqueuedData.runInfo
+    const $command = commandEnqueuedData.command
+    const id = runInfo.commandId
+
+    const attributes = $command.attributes ? $command.attributes : $command
+    const state = $command.state
+
+    // Skip if the command is a 'task' and its first argument is in testAuditResultTasks (is a task displaying results of the audit)
+    if (attributes.name === 'task' &&
+        Array.isArray(attributes.args) &&
+        attributes.args.length > 0 &&
+        Utils.testAuditResultTasks?.includes(attributes.args[0])
+    ) return resultsGraph;
+
+    // Update previous command with this as its next commnad
+    if (prevCommandId && resultsGraph.get(prevCommandId)) {
+        resultsGraph.get(prevCommandId).nextCommandId = id
+    }
+
+    // Calculate command end time and duration
+    const startTime = runInfo.startTime
+    let endTime, duration;
+    if (startTime) {
+        endTime = runInfo.endTime ?? runInfo.retryTime ?? Date.now()
+        duration = endTime - runInfo.startTime
+    }
+
+
+    const $nextCommand = attributes.next;
+
+    let nextCommandId
+    if ($nextCommand && $nextCommand.attributes && $nextCommand.attributes.id) {
+        nextCommandId = $nextCommand.attributes.id;
+    }
+
+    // This is the commandInfo of the next command execurted after currentCommandId (according to the efective run order)
+    const commandEnqueuedDataNext = specAudit.get(currentTestId).commandsEnqueued.get(nextCommandId);
+
+    if (commandEnqueuedDataNext) {
+        // Override command to get all the info including attributes and state after command was run
+        commandEnqueuedDataNext.command = $nextCommand;
+    }
+
+    // This is the command Id for the next entry in the queue after currentCommandId (according to the enqued order)
+    const nextQueuedCommandId = findNextCommandEnqueuedData(currentTestId, id);
+
+    // Clean graph node data for the command (only info needed for the graph)
+    // Mashup command attributes into a single object
+    const commandInfo = {
+        id,
+        name: attributes.name,
+        args: attributes.args,
+        type: attributes.type,
+        query: attributes.query,
+        state,
+
+        currentAssertionCommand: attributes.currentAssertionCommand,
+
+        enqueuedTime: runInfo.enqueuedTime,
+        startTime,
+        endTime,
+        duration,
+        retries: runInfo.retries,
+        queueInsertionOrder: runInfo.queueInsertionOrder,
+        executionOrder: runInfo.executionOrder,
+        nextCommandId,
+        prevCommandId,
+
+        nextQueuedCommandId,
+    }
+
+    resultsGraph.set(id, commandInfo)
+
+    return processCommand({ currentTestId, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id }, resultsGraph)
+}
 
 const getTestAuditResults = (test) => {
+
+    if (!test) return null
+
     const currentTestId = test.id
 
-    const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? defaultTestSlownessThreshold
-    const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? defaultCommandSlownessThreshold
+    const testAudit = specAudit.get(currentTestId)
+    const commandsEnqueuedIterator = testAudit.commandsEnqueued.values()
 
-    // Process commands that were executed
-    // -----------------------------------
-    const executedCommands = [...specAudit.get(currentTestId).commandsExecution.values()].map((commandExecution) => {
+    // Get the first command enqueued data
+    const commandEnqueuedData = commandsEnqueuedIterator.next().value;
 
-        const command = commandExecution.command
-        const attributes = command.attributes ? command.attributes : command
+    // TODO: Maybe replace the resultsGraph with a Map (ensude graph nodes added in order according to next field)
+    const resultsGraph = processCommand({ currentTestId, commandEnqueuedData, prevCommandId: null }, new Map())
 
-        // In the case that the URL visite fails, both endTime and retryTime will be null, so we need to calculate the duration based on current time
-        const commandDuration = (commandExecution.endTime ?? commandExecution.retryTime ?? Date.now()) - commandExecution.startTime
-
-        const commandInfo = {
-            command: command,
-            commandEnqueuedTime: commandExecution.enqueuedTime,
-            commandDuration,
-            commandRetries: commandExecution.retries,
-
-            commandName: attributes.name,
-            commandQuery: attributes.query,
-            commandType: attributes.type,
-            commandArgs: attributes.args,
-            commandCurrentAssertionCommand: attributes.currentAssertionCommand,
-            commandId: attributes.id,
-            commandState: command.state,
-        }
-
-        return commandInfo
-    })
-
-    // Process commands that were enqueued but not executed
-    // ----------------------------------------------------
-    const unexecutedCommands = []
-    specAudit.get(currentTestId).commandsEnqueued.forEach(commandEnqueued => {
-        const commandExecuted = specAudit.get(currentTestId).commandsExecution.has(commandEnqueued.command.id)
-
-        if (!commandExecuted) {
-            const commandInfo = {
-                command: commandEnqueued.command,
-                commandEnqueuedTime: commandEnqueued.enqueuedTime,
-                commandDuration: null,
-                commandRetries: null,
-                commandCurrentAssertionCommand: null,
-                commandState: null,
-                commandName: commandEnqueued.command.name,
-                commandQuery: commandEnqueued.command.query,
-                commandType: commandEnqueued.command.type,
-                commandArgs: commandEnqueued.command.args,
-                commandId: commandEnqueued.command.id,
-            }
-
-            unexecutedCommands.push(commandInfo)
-        }
-    })
-
-    const commands = [ ...executedCommands, ...unexecutedCommands ]
-
-    return {
-        testData: { test, testSlownessThreshold },
-        commandsData: { commands, commandSlownessThreshold },
-    }
+    return resultsGraph
 
 }
 
 afterEach(() => {
 
-  if (Cypress.env('enableFlakyTestAudit') !== true && Cypress.env('enableFlakyTestAudit') !== 'true') return
+    if (Cypress.env('enableFlakyTestAudit') !== true && Cypress.env('enableFlakyTestAudit') !== 'true') return
 
-  const currentTest = cy.state().test   
+    const test = cy.state().test
 
-  const testResult = getTestAuditResults(currentTest)
+    const resultsGraph = getTestAuditResults(test)
+    
+    console.log('********************************************************************************** resultsGraph')
+    console.log(resultsGraph) // TODO: VERIFY GRAPH IS CORRECT
+    console.log('**********************************************************************************')
+
+    if (!resultsGraph) return
+
+    const commands = Array.from(resultsGraph.values());
+    const testData = { test, testSlownessThreshold }
+    const commandsData = { commands, commandSlownessThreshold }
 
 
+    // if (Cypress.env('flakyTestAuditConsoleType') === 'list') {
 
-  if (!testResult) return
+        // Display list of Audit Results in the browser console
+        Utils.displayTestAuditAsListBrowserConsole(testData, commandsData)
+        // Display list of Audit Results in the terminal console
+        Utils.displayTestAuditAsListTerminalConsole(testData, commandsData)
 
-  const { testData, commandsData } = testResult
+    // } else {
+        // By default shows as table
 
-  if (Cypress.env('flakyTestAuditConsoleType') === 'list') {    
+        // Display table of Audit Results in the browser console
+        Utils.displayTestAuditAsTableBrowserConsole(testData, commandsData)
+        // Display table of Audit Results in the terminal console
+        Utils.displayTestAuditAsTableTerminalConsole(testData, commandsData)
 
-    // Display list of Audit Results in the browser console
-    Utils.displayTestAuditAsListBrowserConsole(testData, commandsData)
-    // Display list of Audit Results in the terminal console
-    Utils.displayTestAuditAsListTerminalConsole(testData, commandsData)
-
-  } else {
-    // By default shows as table
-
-    // Display table of Audit Results in the browser console
-    Utils.displayTestAuditAsTableBrowserConsole(testData, commandsData)
-    // Display table of Audit Results in the terminal console
-    Utils.displayTestAuditAsTableTerminalConsole(testData, commandsData)
-  }
+    // }
 
 })
-
-// const getTestAuditResults = (test) => {
-//     const currentTestId = test.id
-//     const currentRetry = test.currentRetry
-
-//     const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? defaultTestSlownessThreshold
-//     const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? defaultCommandSlownessThreshold
-
-//     // Process commands that were executed
-//     // -----------------------------------
-//     const executedCommands = [...specAudit.get(currentTestId).commandsExecution.values()].map((commandExecution) => {
-
-//         const command = commandExecution.command
-//         const attributes = command.attributes ? command.attributes : command
-
-//         // In the case that the URL visite fails, both endTime and retryTime will be null, so we need to calculate the duration based on current time
-//         const commandDuration = (commandExecution.endTime ?? commandExecution.retryTime ?? Date.now()) - commandExecution.startTime
-
-//         const commandInfo = {
-//             command: command,
-//             commandEnqueuedTime: commandExecution.enqueuedTime,
-//             commandDuration,
-//             commandRetries: commandExecution.retries,
-
-//             commandName: attributes.name,
-//             commandQuery: attributes.query,
-//             commandType: attributes.type,
-//             commandArgs: attributes.args,
-//             commandCurrentAssertionCommand: attributes.currentAssertionCommand,
-//             commandId: attributes.id,
-//             commandState: command.state,
-//         }
-
-//         return commandInfo
-//     })
-
-//     // Process commands that were enqueued but not executed
-//     // ----------------------------------------------------
-//     const unexecutedCommands = []
-//     specAudit.get(currentTestId).commandsEnqueued.forEach(commandEnqueued => {
-//         const commandExecuted = specAudit.get(currentTestId).commandsExecution.has(commandEnqueued.command.id)
-
-//         if (!commandExecuted) {
-//             const commandInfo = {
-//                 command: commandEnqueued.command,
-//                 commandEnqueuedTime: commandEnqueued.enqueuedTime,
-//                 commandDuration: null,
-//                 commandRetries: null,
-//                 commandCurrentAssertionCommand: null,
-//                 commandState: null,
-//                 commandName: commandEnqueued.command.name,
-//                 commandQuery: commandEnqueued.command.query,
-//                 commandType: commandEnqueued.command.type,
-//                 commandArgs: commandEnqueued.command.args,
-//                 commandId: commandEnqueued.command.id,
-//             }
-
-//             unexecutedCommands.push(commandInfo)
-//         }
-//     })
-
-//     const commands = [ ...executedCommands, ...unexecutedCommands ]
-
-//     return {
-//         testData: { test, testSlownessThreshold },
-//         commandsData: { commands, commandSlownessThreshold },
-//     }
-
-// }

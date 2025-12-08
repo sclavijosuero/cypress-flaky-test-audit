@@ -1,8 +1,12 @@
+// **********************************************************************************
+// PRIVATE FUNCTIONS
+// **********************************************************************************
+
 const trimString = (str, maxLength) => {
     return str.slice(0, Math.min(str.length, maxLength)) + (str.length > maxLength - 4 ? '...' + str.slice(-1) : '')
 }
 
-const statusIcon = (status, duration, threshold) => {
+const stateIcon = (status, duration, threshold) => {
     if (status === 'passed') return duration > threshold ? '⏳' : '✔️'
     if (status === 'failed') return '❌'
     return '⛔'
@@ -39,7 +43,7 @@ const formatCommandArgs = (args) => {
 
 const testDataAsString = (test, testSlownessThreshold) => {
 
-    const testStatus = statusIcon(test.state, test.duration, testSlownessThreshold)
+    const testStatus = stateIcon(test.state, test.duration, testSlownessThreshold)
     const currentRetry = test._retries > 0 ? ` | (#Current retry: ${test._currentRetry})` : ''
 
     let relativeFile
@@ -59,18 +63,6 @@ ${testStatus} TEST TITLE: "${test.title}"${currentRetry} | DURATION: ${test.dura
 }
 
 
-// const assertionCommandAsString = (commandInfo) => {
-//     console.log('-------assertionCommandAsString')
-//     console.log(commandInfo)
-
-//     let assertionCommand = '';
-//     const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand;
-//     if (commandCurrentAssertionCommand) {
-//         assertionCommand = ` .${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`;
-//     }
-//     return assertionCommand;
-// }
-
 const getAssertionsRecursive = (commandAttributes, originalCommandId) => {
     // console.log('-------getAssertionsRecursive')
     // console.log(commandAttributes)
@@ -83,49 +75,76 @@ const getAssertionsRecursive = (commandAttributes, originalCommandId) => {
 
 
     const assertionCommand = getAssertionsRecursive(commandAttributes.prev.attributes, originalCommandId) +
-           ` .${commandAttributes.name.toUpperCase()}${formatCommandArgs(commandAttributes.args)}`;
-        // console.log('-------BACK assertionCommand')
-        // console.log(assertionCommand)
+        ` .${commandAttributes.name.toUpperCase()}${formatCommandArgs(commandAttributes.args)}`;
+    // console.log('-------BACK assertionCommand')
+    // console.log(assertionCommand)
     return assertionCommand;
 }
 
-const assertionCommandAsString = (commandInfo) => {
-    // console.log('--------------assertionCommandAsString')
-    // console.log(commandInfo)
+const getCommandType = (commandInfo) => {
+    return commandInfo.query ? 'Query'
+        : commandInfo.type === 'assertion' ? 'Assertion'
+        : `Command (${commandInfo.type})`;
+}
 
-    let assertionCommand = '';
-    
-    const commandCurrentAssertionCommand = commandInfo.commandCurrentAssertionCommand
-    if (commandCurrentAssertionCommand) {
-        assertionCommand = getAssertionsRecursive(commandCurrentAssertionCommand.attributes, commandInfo.commandId);
-        // assertionCommand = ` .${commandCurrentAssertionCommand.attributes.name.toUpperCase()}${formatCommandArgs(commandCurrentAssertionCommand.attributes.args)}`;
-    }
-    return assertionCommand;
+const getCommandName = (commandInfo) => {
+    return `${commandInfo.name.toUpperCase()} ${formatCommandArgs(commandInfo.args)}`
+}
+
+const getCommandState = (commandInfo) => {
+    return commandInfo.state === 'queued' ? commandInfo.state + ' (** never run **)' : commandInfo.state
 }
 
 const commandDataAsList = (commands, commandSlownessThreshold) => {
     const list = []
 
     commands.forEach(commandInfo => {
-        const stateIcon = statusIcon(commandInfo.commandState, commandInfo.commandDuration, commandSlownessThreshold)
-        const commandType = commandInfo.commandQuery ? `Query:   ` : `Command: `
-        const commandName = `${commandInfo.commandName.toUpperCase()}`
-        const commandArgs = `${formatCommandArgs(commandInfo.commandArgs)}`
+        const stateIconValue = stateIcon(commandInfo.state, commandInfo.duration, commandSlownessThreshold)
+        const commandType = getCommandType(commandInfo);
+        const name = ` | ${getCommandName(commandInfo)}`;
 
-        const assertionCommand = assertionCommandAsString(commandInfo);
+        const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.enqueuedTime).toISOString()}`
+        const runTime = commandInfo.duration ? ` | Run time: ${commandInfo.duration} ms` : ''
+        const state = ` | State: ${commandInfo.state !== 'queued' ? commandInfo.state : commandInfo.state + '(**NEVER RUN**)'}`.toUpperCase()
+        const retries = commandInfo.retries ? ` | #Internal retries: ${commandInfo.retries}` : ''
 
-        const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.commandEnqueuedTime).toISOString()}`
-        const runTime = commandInfo.commandDuration ? ` | Run time: ${commandInfo.commandDuration} ms` : ''
-        const state = ` | State: ${(commandInfo.commandState || '**NEVER RUN**').toUpperCase()}`
-        const retries = commandInfo.commandRetries ? ` | #Internal retries: ${commandInfo.commandRetries}` : ''
-
-        list.push(`      ${stateIcon}  ${commandType}${commandName}${commandArgs}${assertionCommand}${commandEnqueuedTime}${runTime}${state}${retries}`)
+        list.push(`      ${stateIconValue}  ${commandType}${name}${commandEnqueuedTime}${runTime}${state}${retries}`)
     })
     return list
 }
 
+const commandDataAsTable = (commands, commandSlownessThreshold) => {
+    console.log(commands)
 
+    const tableRows = commands.map(commandInfo => {
+        // const assertionCommand = assertionCommandAsString(commandInfo);
+
+        const stateIconValue = stateIcon(commandInfo.state, commandInfo.duration, commandSlownessThreshold)
+        const commandType = getCommandType(commandInfo);
+
+        const name = getCommandName(commandInfo);
+
+        return {
+            "Type": `${stateIconValue}  ${commandType}`,
+            "Command": name,
+            "Enqueued Time": new Date(commandInfo.enqueuedTime).toISOString(),
+            "Run Time": commandInfo.duration ? `${commandInfo.duration} ms` : ``,
+            "State": (commandInfo.state !== 'queued' ? commandInfo.state : commandInfo.state + '(**NEVER RUN**)').toUpperCase(),
+            "#Internal retries": commandInfo.retries ?? "",
+        }
+    });
+    return tableRows
+}
+
+
+// **********************************************************************************
+// PUBLIC FUNCTIONS
+// **********************************************************************************
+
+// PUBLIC FUNCTION
+// ----------------
 const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
+    console.log('&&&& HERE displayTestAuditAsListBrowserConsole')
     const { test, testSlownessThreshold } = testData
     const { commands, commandSlownessThreshold } = commandsData
 
@@ -134,11 +153,15 @@ const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
     console.log(testDataAsString(test, testSlownessThreshold))
 
     // Display commands executed in the browser console
-    // ------------------------------------------------
+    // -------------------------------------------default.statusIcon-----
     console.log(commandDataAsList(commands, commandSlownessThreshold).join('\n'))
 }
 
+
+// PUBLIC FUNCTION
+// ----------------
 const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
+    console.log('&&&& HERE displayTestAuditAsListTerminalConsole')
     const { test, testSlownessThreshold } = testData
     const { commands, commandSlownessThreshold } = commandsData
 
@@ -151,31 +174,11 @@ const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
     cy.task('displayListInTerminal', commandDataAsList(commands, commandSlownessThreshold), { log: false })
 }
 
-const commandDataAsTable = (commands, commandSlownessThreshold) => {
-    const tableRows = commands.map(commandInfo => {
-        const assertionCommand = assertionCommandAsString(commandInfo);
 
-        const stateIcon = statusIcon(commandInfo.commandState, commandInfo.commandDuration, commandSlownessThreshold)
-        const state = (commandInfo.commandState || '**NEVER RUN**').toUpperCase()
-
-        return {
-            "Type": `${stateIcon}  ${commandInfo.commandQuery ? 'Query' : 'Command'}`,
-            // "Name": commandInfo.commandName.toUpperCase(),
-            // "Args": formatCommandArgs(commandInfo.commandArgs),
-            // "Assertion Commands": assertionCommand,
-            "Command": commandInfo.commandName.toUpperCase() +
-                       formatCommandArgs(commandInfo.commandArgs) +
-                       assertionCommand,
-            "Enqueued Time": new Date(commandInfo.commandEnqueuedTime).toISOString(),
-            "Run Time": commandInfo.commandDuration ? `${commandInfo.commandDuration} ms` : ``,
-            "State": (commandInfo.commandState || '**NEVER RUN**').toUpperCase(),
-            "#Internal retries": commandInfo.commandRetries ? commandInfo.commandRetries : ``,
-        }
-    });
-    return tableRows
-}
-
+// PUBLIC FUNCTION
+// ----------------
 const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
+    console.log('&&&& HERE displayTestAuditAsTableBrowserConsole')
     const { test, testSlownessThreshold } = testData
     const { commands, commandSlownessThreshold } = commandsData
 
@@ -188,7 +191,10 @@ const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
     console.table(commandDataAsTable(commands, commandSlownessThreshold));
 }
 
+// PUBLIC FUNCTION
+// ----------------
 const displayTestAuditAsTableTerminalConsole = (testData, commandsData) => {
+    console.log('&&&& HERE displayTestAuditAsTableTerminalConsole')
     const { test, testSlownessThreshold } = testData
     const { commands, commandSlownessThreshold } = commandsData
 

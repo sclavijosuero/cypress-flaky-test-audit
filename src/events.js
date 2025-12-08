@@ -11,57 +11,57 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log(test)
 
         currentTestId = test.id
-        specAudit.set(currentTestId, { test, commandsExecution: new Map(), commandsEnqueued: new Map() })
+        specAudit.set(currentTestId, { test, commandsEnqueued: new Map() })
     })
 
     Cypress.on('command:enqueued', (command) => {
-        console.log('................. command:enqueued -> ' + command.name + ' ' + command.args + ' ' + command.id)
-        console.log(command)
+        // console.log('................. command:enqueued -> ' + command.name + ' ' + command.args + ' ' + command.id)
+        // console.log(command)
 
         const commandId = command.id
         const testAudit = specAudit.get(currentTestId)
 
         testAudit.commandsEnqueued.set(commandId, {
-            commandId: commandId, // For convenence
             command: command,
-
-            enqueuedTime: new Date() - 0,
-            queueInsertionOrder: testAudit.commandsEnqueued.size,
+            runInfo: {
+                commandId: commandId, // For convenence
+                enqueuedTime: new Date() - 0,
+                queueInsertionOrder: testAudit.commandsEnqueued.size,
+            },
         })
     });
 
     Cypress.on('command:start', (command) => {
         // Note: Assertion commands will not launch command:start event, they are evaluated with their query command (e.g. '.get().should()')
-        console.log('................. command:start -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
-        console.log(command)
+
+        // console.log('................. command:start -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
+        // console.log(command)
 
         const commandId = command.attributes.id
         const testAudit = specAudit.get(currentTestId)
+        const enqueuedCommandData = testAudit.commandsEnqueued.get(commandId)
 
-        testAudit.commandsExecution.set(commandId, {
-            commandId: commandId, // For convenence
-            command: command,
-
-            startTime: new Date() - 0,
-            endTime: null,
-            retryTime: null,
-            retries: 0,
-            executionOrder: testAudit.commandsExecution.size,
-        })
+        enqueuedCommandData.command = command
+        enqueuedCommandData.runInfo.startTime = new Date() - 0
+        enqueuedCommandData.runInfo.endTime = null
+        enqueuedCommandData.runInfo.retryTime = null
+        enqueuedCommandData.runInfo.retries = 0
+        enqueuedCommandData.runInfo.executionOrder = testAudit.commandsEnqueued.size - 1
 
         currentCommandId = commandId // Used to handle retries (event 'command:retry')
-    });
+    })
 
     Cypress.on('command:end', (command) => {
         // Note: Assertion commands will not launch command:end event, they are evaluated with their query command (e.g. '.get().should()')
+
         // console.log('................. command:end -> ' + command.attributes.name + ' ' + command.attributes.args + ' ' + command.attributes.id)
         // console.log(command)
 
         const commandId = command.attributes.id
         const testAudit = specAudit.get(currentTestId)
+        const enqueuedCommandData = testAudit.commandsEnqueued.get(commandId)
 
-        const commandExecution = testAudit.commandsExecution.get(commandId)
-        commandExecution.endTime = new Date() - 0
+        enqueuedCommandData.runInfo.endTime = new Date() - 0
 
         currentCommandId = null // Used to handle retries (event 'command:retry')
     });
@@ -70,13 +70,15 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
     Cypress.on('command:retry', (options) => {
         // Note: Assertion commands will not launch command:retry event, they are evaluated with their query command (e.g. '.get().should()')
+
         // console.log('####### command:retry -> ' + currentCommandId)
         // console.log(options)
 
         const testAudit = specAudit.get(currentTestId)
-        const commandExecution = testAudit.commandsExecution.get(currentCommandId)
-        commandExecution.retryTime = new Date() - 0
-        commandExecution.retries++
+        const enqueuedCommandData = testAudit.commandsEnqueued.get(currentCommandId)
+
+        enqueuedCommandData.runInfo.retryTime = new Date() - 0
+        enqueuedCommandData.runInfo.retries++
     });
 
 }
