@@ -15,7 +15,6 @@ const trimString = (str, maxLength) => {
     return str.slice(0, Math.min(str.length, maxLength)) + (str.length > maxLength - 4 ? '...' + str.slice(-1) : '')
 }
 
-
 const getStateIcon = (status, slow) => {
     if (status === 'passed') return slow ? '✔️⏳' : '✔️'
     if (status === 'failed') return '❌'
@@ -64,7 +63,7 @@ const testDataAsString = (test, testSlownessThreshold) => {
     const testStatus = getStateIcon(test.state, slow)
     const testDescription = getStateDescription(test.state, slow)
 
-    const currentRetry = test._retries > 0 ? ` | (#Current retry: ${test._currentRetry})` : ''
+    const currentRetry = test._retries > 0 ? ` | (#Test retry: ${test._currentRetry})` : ''
 
     let relativeFile
     if (test._currentRetry === 0) {
@@ -144,8 +143,6 @@ const commandDataAsList = (commands, commandSlownessThreshold, consoleType) => {
 }
 
 const commandDataAsTable = (commands, commandSlownessThreshold, consoleType) => {
-    console.log(commands)
-
     const tableRows = commands.map(commandInfo => {
         // const assertionCommand = assertionCommandAsString(commandInfo);
 

@@ -128,8 +128,6 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .and('have.class', 'form-control')
       .and('have.attr', 'data-testid', 'ContactName')
 
-
-
     // Using .then() for demo purposes
     // Never will enter within the cy.then() 
     cy.then(() => {
@@ -141,7 +139,6 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
         cy.url()
           .should('include', 'NOT-MY-PAGE')
       })
-      // TODO: ADD A SECOND NESTED LEVEL OF THEN() HERE TO VERIFY THE GRAPH IS CORRECT
     })
 
     cy.wait(timeToWait) // ⛔ C.NEVER RUN
