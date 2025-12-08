@@ -102,11 +102,11 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.then(() => {
       cy.get('#contact buttonNNNNNN')
         .contains('SubmitYYYYYYYY')
-        .click() // ❌ C.FAIL (selector not found)
+        .click()
       cy.get('#contact input[aaa"]')
       cy.then(() => {
         cy.url()
-          .should('include', 'NOT-MY-PAGE') // ⛔ C.NEVER RUN
+          .should('include', 'NOT-MY-PAGE')
       })
       // TODO: ADD A SECOND NESTED LEVEL OF THEN() HERE TO VERIFY THE GRAPH IS CORRECT
     })
@@ -135,11 +135,11 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.then(() => {
       cy.get('#contact buttonNNNNNN')
         .contains('SubmitYYYYYYYY')
-        .click() // ❌ C.FAIL (selector not found)
+        .click()
       cy.get('#contact input[aaa"]')
       cy.then(() => {
         cy.url()
-          .should('include', 'NOT-MY-PAGE') // ⛔ C.NEVER RUN
+          .should('include', 'NOT-MY-PAGE')
       })
       // TODO: ADD A SECOND NESTED LEVEL OF THEN() HERE TO VERIFY THE GRAPH IS CORRECT
     })
@@ -158,9 +158,9 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ C.PASS
 
     cy.then(() => {
-      cy.get('#contact button') // C.PASS   
-        .contains('Submit') // C.PASS   
-        .click() // C.PASS   
+      cy.get('#contact button')  
+        .contains('Submit') 
+        .click()  
     })
 
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
@@ -173,9 +173,9 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ C.PASS
 
     cy.then(() => {
-      cy.get('#contact button') // ⛔ C.NEVER RUN 
-        .contains('Submit') // ⛔ C.NEVER RUN  
-        .click() // ⛔ C.NEVER RUN   
+      cy.get('#contact button')
+        .contains('Submit')
+        .click() 
     })
 
     cy.wait(timeToWait) // ⛔ C.NEVER RUN
@@ -184,7 +184,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   //---------------------------------------------------------------------
 
   it.only('test 3', () => {  // ✔️ TEST PASS
-    const timeToWait = 1000;
+    const timeToWait = 1100;
 
     cy.get('#contact input[data-testid="ContactName"]')
       .should('be.visible') // ✔️ C.PASS
@@ -203,9 +203,10 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
     // Using .then() for demo purposes
     cy.then(() => {
-      cy.get('#contact button').contains('SubmitYYYYYYYY').click() // ❌ C.FAIL (selector not found)
+      cy.get('#contact button')
+        .contains('SubmitYYYYYYYY').click()
       cy.url()
-        .should('include', 'NOT-MY-PAGE') // ⛔ C.NEVER RUN
+        .should('include', 'NOT-MY-PAGE')
     })
 
     cy.wait(timeToWait) // ⛔ C.NEVER RUN
@@ -229,11 +230,11 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact button')
       .contains('Submit')
       .then($button => {
-        cy.wrap($button) // C.PASS
-          .click() // C.PASS
+        cy.wrap($button)
+          .click()
 
-        cy.url() // ✔️ C.PASS
-          .should('include', 'NOT-MY-PAGE') // ❌ FAIL (url not found)
+        cy.url()
+          .should('include', 'NOT-MY-PAGE')
       })
 
     cy.wait(timeToWait) // ⛔ NEVER RUN
@@ -249,11 +250,11 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact button')
       .contains('SubmitYYYYYYYY')
       .then($button => {
-        cy.wrap($button) // C.PASS
-          .click() // C.PASS
+        cy.wrap($button)
+          .click()
           .then(() => {
-            cy.url() // ✔️ C.PASS
-              .should('include', 'NOT-MY-PAGE') // Nover reached
+            cy.url()
+              .should('include', 'NOT-MY-PAGE')
           })
 
         cy.get('somethingnotfound')
