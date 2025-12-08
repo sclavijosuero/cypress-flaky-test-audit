@@ -1,16 +1,18 @@
 import Utils from './utils'
-import { specTests } from './events'
+import { specAudit } from './events'
+
+const defaultTestSlownessThreshold = 5000
+const defaultCommandSlownessThreshold = 1500
 
 const getTestAuditResults = (test) => {
     const currentTestId = test.id
-    const currentRetry = test.currentRetry
 
     const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? defaultTestSlownessThreshold
     const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? defaultCommandSlownessThreshold
 
     // Process commands that were executed
     // -----------------------------------
-    const executedCommands = [...specTests.get(currentTestId).commandExecutions.values()].map((commandExecution) => {
+    const executedCommands = [...specAudit.get(currentTestId).commandsExecution.values()].map((commandExecution) => {
 
         const command = commandExecution.command
         const attributes = command.attributes ? command.attributes : command
@@ -39,8 +41,8 @@ const getTestAuditResults = (test) => {
     // Process commands that were enqueued but not executed
     // ----------------------------------------------------
     const unexecutedCommands = []
-    specTests.get(currentTestId).commandsEnqueued.forEach(commandEnqueued => {
-        const commandExecuted = specTests.get(currentTestId).commandExecutions.has(commandEnqueued.command.id)
+    specAudit.get(currentTestId).commandsEnqueued.forEach(commandEnqueued => {
+        const commandExecuted = specAudit.get(currentTestId).commandsExecution.has(commandEnqueued.command.id)
 
         if (!commandExecuted) {
             const commandInfo = {
@@ -78,6 +80,8 @@ afterEach(() => {
 
   const testResult = getTestAuditResults(currentTest)
 
+
+
   if (!testResult) return
 
   const { testData, commandsData } = testResult
@@ -99,3 +103,72 @@ afterEach(() => {
   }
 
 })
+
+// const getTestAuditResults = (test) => {
+//     const currentTestId = test.id
+//     const currentRetry = test.currentRetry
+
+//     const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? defaultTestSlownessThreshold
+//     const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? defaultCommandSlownessThreshold
+
+//     // Process commands that were executed
+//     // -----------------------------------
+//     const executedCommands = [...specAudit.get(currentTestId).commandsExecution.values()].map((commandExecution) => {
+
+//         const command = commandExecution.command
+//         const attributes = command.attributes ? command.attributes : command
+
+//         // In the case that the URL visite fails, both endTime and retryTime will be null, so we need to calculate the duration based on current time
+//         const commandDuration = (commandExecution.endTime ?? commandExecution.retryTime ?? Date.now()) - commandExecution.startTime
+
+//         const commandInfo = {
+//             command: command,
+//             commandEnqueuedTime: commandExecution.enqueuedTime,
+//             commandDuration,
+//             commandRetries: commandExecution.retries,
+
+//             commandName: attributes.name,
+//             commandQuery: attributes.query,
+//             commandType: attributes.type,
+//             commandArgs: attributes.args,
+//             commandCurrentAssertionCommand: attributes.currentAssertionCommand,
+//             commandId: attributes.id,
+//             commandState: command.state,
+//         }
+
+//         return commandInfo
+//     })
+
+//     // Process commands that were enqueued but not executed
+//     // ----------------------------------------------------
+//     const unexecutedCommands = []
+//     specAudit.get(currentTestId).commandsEnqueued.forEach(commandEnqueued => {
+//         const commandExecuted = specAudit.get(currentTestId).commandsExecution.has(commandEnqueued.command.id)
+
+//         if (!commandExecuted) {
+//             const commandInfo = {
+//                 command: commandEnqueued.command,
+//                 commandEnqueuedTime: commandEnqueued.enqueuedTime,
+//                 commandDuration: null,
+//                 commandRetries: null,
+//                 commandCurrentAssertionCommand: null,
+//                 commandState: null,
+//                 commandName: commandEnqueued.command.name,
+//                 commandQuery: commandEnqueued.command.query,
+//                 commandType: commandEnqueued.command.type,
+//                 commandArgs: commandEnqueued.command.args,
+//                 commandId: commandEnqueued.command.id,
+//             }
+
+//             unexecutedCommands.push(commandInfo)
+//         }
+//     })
+
+//     const commands = [ ...executedCommands, ...unexecutedCommands ]
+
+//     return {
+//         testData: { test, testSlownessThreshold },
+//         commandsData: { commands, commandSlownessThreshold },
+//     }
+
+// }
