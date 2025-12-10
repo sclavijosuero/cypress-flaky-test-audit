@@ -49,7 +49,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  it('test 1.2', () => {  // ❌ TEST FAIL 
+  it('test 1.3', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })
@@ -83,9 +83,53 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
+  
+  it.only('test 1.4-b', () => {  // ❌ TEST FAIL 
+    const timeToWait = 500;
+
+    cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney')
+    cy.get('#contact input[data-testid="ContactEmail"]').type('paul.mcCartney@gmail.com', { delay: 0 })
+
+    // ---------------------------------------------------------------------
+
+    // CORRECT
+    // cy.wrap({ width: 50 }).its('width') // Passes (that is correct)
+    //   .should('eq', 51) // This assertion is what fails (that is correct)
+
+    // INCORRECT
+    // cy.wrap('pepito pulgarcito') // In this case says that fails the wrap command but the issue is in the assertion               //.contains('pulgarcito') // contains expect yielded a DOM element
+    //   .should('contains', 'pulgarcitoooo') // It is skipped
+
+    // INCORRECT
+    // cy.get('#contact input[data-testid="ContactName"]')  // It says fails the get, but is the assertion what fails
+    //   .should('have.value', 'paul mcCartneyyyyy') // It is skipped
+
+    // INCORRECT
+    // cy.get('#contact input[data-testid="ContactNameeeee"]')  // It says that pass the get, but it is never found (so should fail)
+    //   .should('have.value', 'paul mcCartney') // It says it fails the assertion, but was the get that failed
+
+    // INCORRECT
+    // cy.get('#contact input[data-testid="ContactName"]')  // It says that pass the get, that is correct
+    //   .should('have.value', 'paul mcCartney') // But mark as skipped the asertion, but it really passes
+
+    // ---------------------------------------------------------------------
+
+    cy.get('#contact input[data-testid="ContactName"]')
+      .should('have.value', 'paul mcCartneyyyy')
+      .and('have.class', 'form-control')
+      // .and('have.css', 'color', 'red') // ❌ C.FAIL
+
+    cy.wait(timeToWait) // ⛔ C.NEVER RUN
+    cy.get('#contact button') // ⛔ C. NEVER RUN
+      .contains('Submit') // ⛔ C.NEVER RUN
+      .click() // ⛔ C.NEVER RUN
+  })
+
+
+
   //---------------------------------------------------------------------
 
-  it.only('test 1.5', () => {  // ❌ TEST FAIL 
+  it('test 1.5', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })
@@ -117,7 +161,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  it.only('test 1.6', () => {  // ❌ TEST FAIL 
+  it('test 1.6', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })
@@ -180,7 +224,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
   //---------------------------------------------------------------------
 
-  it.only('test 3', () => {  // ✔️ TEST PASS
+  it('test 3', () => {  // ✔️ TEST PASS
     const timeToWait = 1100;
 
     cy.get('#contact input[data-testid="ContactName"]')

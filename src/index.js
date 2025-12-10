@@ -13,14 +13,11 @@ const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? 1500
 // **********************************************************************************
 
 const findNextCommandEnqueuedData = (currentTestId, currentCommandId) => {
-
     const testAudit = specAudit.get(currentTestId)  // Is the Map
-
     let found = false;
 
     // testAudit is an object with a property 'commandsEnqueued' that is a Map
     const commandsEnqueued = testAudit.commandsEnqueued;
-
     for (const [k, v] of commandsEnqueued) {
         if (found) {
             return k // This is the command Id for the next entry in the queue after currentCommandId
@@ -34,7 +31,7 @@ const findNextCommandEnqueuedData = (currentTestId, currentCommandId) => {
 }
 
 
-const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId }, resultsGraph = new Map()) => {
+const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId, idAssertionCommandFailed }, resultsGraph = new Map()) => {
     // Return early if command enqueued data is missing or the command is missing
     if (!commandEnqueuedData || !commandEnqueuedData.command) return resultsGraph
 
@@ -43,7 +40,10 @@ const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId }, r
     const id = runInfo.commandId
 
     const attributes = $command.attributes ? $command.attributes : $command
-    const state = $command.state
+    let state = $command.state
+    if (attributes.type === 'assertion' && idAssertionCommandFailed === id) {
+        state = 'failed'
+    }
 
     // Skip if the command is a 'task' and its first argument is in testAuditResultTasks (is a task displaying results of the audit)
     if (attributes.name === 'task' &&
@@ -65,7 +65,6 @@ const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId }, r
         duration = endTime - runInfo.startTime
     }
 
-
     const $nextCommand = attributes.next;
 
     let nextCommandId
@@ -83,6 +82,14 @@ const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId }, r
 
     // This is the command Id for the next entry in the queue after currentCommandId (according to the enqued order)
     const nextQueuedCommandId = findNextCommandEnqueuedData(currentTestId, id);
+
+    let idAssertionCommandThatWillFail
+    if (attributes.query && state === 'failed') {
+        idAssertionCommandThatWillFail = attributes.currentAssertionCommand?.attributes?.id
+        if (idAssertionCommandThatWillFail) {
+            state = 'passed'
+        }
+    }
 
     // Clean graph node data for the command (only info needed for the graph)
     // Mashup command attributes into a single object
@@ -111,7 +118,7 @@ const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId }, r
 
     resultsGraph.set(id, commandInfo)
 
-    return processCommand({ currentTestId, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id }, resultsGraph)
+    return processCommand({ currentTestId, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id, idAssertionCommandFailed: idAssertionCommandThatWillFail }, resultsGraph)
 }
 
 const getTestAuditResults = (test) => {
@@ -125,6 +132,9 @@ const getTestAuditResults = (test) => {
 
     // Get the first command enqueued data
     const commandEnqueuedData = commandsEnqueuedIterator.next().value;
+    console.log('#######################################################################################################')
+    console.log(testAudit)
+    console.log('#######################################################################################################')
 
     // TODO: Maybe replace the resultsGraph with a Map (ensude graph nodes added in order according to next field)
     const resultsGraph = processCommand({ currentTestId, commandEnqueuedData, prevCommandId: null }, new Map())
@@ -141,9 +151,9 @@ afterEach(() => {
 
     const resultsGraph = getTestAuditResults(test)
     
-    console.log('********************************************************************************** resultsGraph')
-    console.log(resultsGraph) // TODO: VERIFY GRAPH IS CORRECT
-    console.log('**********************************************************************************')
+    // console.log('********************************************************************************** resultsGraph')
+    // console.log(resultsGraph) // TODO: VERIFY GRAPH IS CORRECT
+    // console.log('**********************************************************************************')
 
     if (!resultsGraph) return
 
