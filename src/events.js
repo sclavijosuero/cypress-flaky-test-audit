@@ -18,6 +18,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log('................. command:enqueued -> ' + command.name + ' ' + command.args + ' ' + command.id)
         // console.log(command)
 
+        const runnable = Cypress.state('runnable')
+
         const commandId = command.id
         const testAudit = specAudit.get(currentTestId)
 
@@ -27,6 +29,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
                 commandId: commandId, // For convenence
                 enqueuedTime: new Date() - 0,
                 queueInsertionOrder: testAudit.commandsEnqueued.size,
+                runnableType: runnable.type === 'hook' ? runnable.hookName : runnable.type,
             },
         })
     });

@@ -16,14 +16,14 @@ const trimString = (str, maxLength) => {
 }
 
 const getStateIcon = (status, slow) => {
-    if (status === 'passed') return slow ? '✔️⏳' : '✔️'
+    if (status === 'passed') return '✔️'
     if (status === 'failed') return '❌'
     return '⛔'
 }
 
 const getStateDescription = (state, slow) => {
     const stateValue = state.toUpperCase()
-    return state === 'queued' ? stateValue + ' (*never run*)' : state === 'passed' && slow ? stateValue + ' (*slow*)' : stateValue
+    return state === 'queued' ? stateValue + ' (*never run*)' : state === 'passed' && slow ? stateValue + ' (⏳ *slow*)' : stateValue
 }
 
 const formatCommandArgs = (args, consoleType) => {
@@ -102,7 +102,7 @@ ${testStatus} ${testDescription} | TEST TITLE: "${test.title}"${currentRetry} | 
 
 const getCommandType = (commandInfo) => {
     return commandInfo.query ? 'Query'
-        : commandInfo.type === 'assertion' ? 'Assertion'
+        : commandInfo.type === 'assertion' ? (Cypress.env('flakyTestAuditConsoleType') === 'list' ? 'Assertion' : ' └─ Assertion')
         : `Command (${commandInfo.type})`;
 }
 
@@ -130,6 +130,7 @@ const commandDataAsList = (commands, commandSlownessThreshold, consoleType) => {
 
     commands.forEach(commandInfo => {
         const state = `${getCommandState(commandInfo, commandSlownessThreshold)}`
+        const runnableType = commandInfo.runnableType ? ` | ${commandInfo.runnableType}` : ''
         const commandType = ` | ${getCommandType(commandInfo)}`;
         const name = ` | ${getCommandName(commandInfo, consoleType)}`;
 
@@ -137,7 +138,7 @@ const commandDataAsList = (commands, commandSlownessThreshold, consoleType) => {
         const runTime = commandInfo.duration ? ` | Run time: ${commandInfo.duration} ms` : ''
         const retries = ` | #Internal retries: ${commandInfo.retries ?? ""}`
 
-        list.push(`      ${state}${commandType}${name}${commandEnqueuedTime}${runTime}${retries}`)
+        list.push(`      ${state}${runnableType}${commandType}${name}${commandEnqueuedTime}${runTime}${retries}`)
     })
     return list
 }
@@ -147,15 +148,16 @@ const commandDataAsTable = (commands, commandSlownessThreshold, consoleType) => 
         // const assertionCommand = assertionCommandAsString(commandInfo);
 
         const commandType = getCommandType(commandInfo);
-
+        const runnableType = commandInfo.runnableType ?? ''
         const name = getCommandName(commandInfo, consoleType);
 
         return {
             "State": `${getCommandState(commandInfo, commandSlownessThreshold)}`,
+            "Runnable type": runnableType,
             "Type": `${commandType}`,
             "Command": name,
-            "Enqueued Time": new Date(commandInfo.enqueuedTime).toISOString(),
-            "Run Time": commandInfo.duration ? `${commandInfo.duration} ms` : ``,
+            "Enqueued time": new Date(commandInfo.enqueuedTime).toISOString(),
+            "Run time": commandInfo.duration ? `${commandInfo.duration} ms` : ``,
             "#Internal retries": commandInfo.retries ?? "",
         }
     });

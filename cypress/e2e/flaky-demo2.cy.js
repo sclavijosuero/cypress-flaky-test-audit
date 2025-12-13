@@ -87,8 +87,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   it.only('test 1.4-b', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
-    cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney')
-    cy.get('#contact input[data-testid="ContactEmail"]').type('paul.mcCartney@gmail.com', { delay: 0 })
+    cy.get('#contact input[data-testid="ContactName"]').type('John Wick')
+    cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 })
 
     // ---------------------------------------------------------------------
 
@@ -115,7 +115,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // ---------------------------------------------------------------------
 
     cy.get('#contact input[data-testid="ContactName"]')
-      .should('have.value', 'paul mcCartneyyyy')
+      .should('have.value', 'John Wickyyyyyy 😎')
       .and('have.class', 'form-control')
       // .and('have.css', 'color', 'red') // ❌ C.FAIL
 
@@ -192,11 +192,11 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it('test 2.1', () => {  // ⏳ TEST PASS SLOW
+  it.only('test 2.1', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
-    cy.get('#contact input[data-testid="ContactName"]').type('ringo starr', { delay: 200 }) // ⏳ C.PASS SLOW
-    cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ C.PASS
+    cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
+    cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 }) // ✔️ C.PASS
 
     cy.then(() => {
       cy.get('#contact button')  
