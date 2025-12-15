@@ -11,7 +11,12 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log(test)
 
         currentTestId = test.id
-        specAudit.set(currentTestId, { test, commandsEnqueued: new Map() })
+        specAudit.set(currentTestId, {
+            test,
+            commandsEnqueued: new Map(),
+            testStartTime: new Date() - 0,
+            testStartTimePerformance: performance.now(),
+        })
     })
 
     Cypress.on('command:enqueued', (command) => {
@@ -28,6 +33,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             runInfo: {
                 commandId: commandId, // For convenence
                 enqueuedTime: new Date() - 0,
+                enqueuedTimePerformance: performance.now() - testAudit.testStartTimePerformance,
                 queueInsertionOrder: testAudit.commandsEnqueued.size,
                 runnableType: runnable.type === 'hook' ? runnable.hookName : runnable.type,
             },
@@ -46,8 +52,12 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         enqueuedCommandData.command = command
         enqueuedCommandData.runInfo.startTime = new Date() - 0
+        enqueuedCommandData.runInfo.startTimePerformance = performance.now() - testAudit.testStartTimePerformance
+
         enqueuedCommandData.runInfo.endTime = null
+        enqueuedCommandData.runInfo.endTimePerformance = null
         enqueuedCommandData.runInfo.retryTime = null
+        enqueuedCommandData.runInfo.retryTimePerformance = null
         enqueuedCommandData.runInfo.retries = 0
         enqueuedCommandData.runInfo.executionOrder = testAudit.commandsEnqueued.size - 1
 
@@ -65,6 +75,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const enqueuedCommandData = testAudit.commandsEnqueued.get(commandId)
 
         enqueuedCommandData.runInfo.endTime = new Date() - 0
+        enqueuedCommandData.runInfo.endTimePerformance = performance.now() - testAudit.testStartTimePerformance
 
         currentCommandId = null // Used to handle retries (event 'command:retry')
     });
@@ -81,6 +92,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const enqueuedCommandData = testAudit.commandsEnqueued.get(currentCommandId)
 
         enqueuedCommandData.runInfo.retryTime = new Date() - 0
+        enqueuedCommandData.runInfo.retryTimePerformance = performance.now() - testAudit.testStartTimePerformance
         enqueuedCommandData.runInfo.retries++
     });
 

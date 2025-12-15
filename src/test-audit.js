@@ -67,10 +67,15 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         // Calculate command end time and duration
         const startTime = runInfo.startTime
-        let endTime, duration;
+        const startTimePerformance = runInfo.startTimePerformance
+
+        let endTime, endTimePerformance, duration, durationPerformance;
         if (startTime) {
             endTime = runInfo.endTime ?? runInfo.retryTime ?? Date.now()
+            endTimePerformance = runInfo.endTimePerformance ?? runInfo.retryTimePerformance ?? performance.now()
+
             duration = endTime - runInfo.startTime
+            durationPerformance = endTimePerformance - startTimePerformance
         }
 
         const $nextCommand = attributes.next;
@@ -113,9 +118,13 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             currentAssertionCommand: attributes.currentAssertionCommand,
 
             enqueuedTime: runInfo.enqueuedTime,
+            enqueuedTimePerformance: runInfo.enqueuedTimePerformance,
             startTime,
+            startTimePerformance,
             endTime,
+            endTimePerformance,
             duration,
+            durationPerformance,
             retries: runInfo.retries,
             queueInsertionOrder: runInfo.queueInsertionOrder,
             executionOrder: runInfo.executionOrder,
@@ -137,6 +146,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const currentTestId = test.id
 
         const testAudit = specAudit.get(currentTestId)
+        const testStartTime = testAudit.testStartTime
         const commandsEnqueuedIterator = testAudit.commandsEnqueued.values()
 
         // Get the first command enqueued data
@@ -148,10 +158,16 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // TODO: Maybe replace the resultsGraph with a Map (ensude graph nodes added in order according to next field)
         const resultsGraph = processCommand({ currentTestId, commandEnqueuedData, prevCommandId: null }, new Map())
 
-        return resultsGraph
+        return { resultsGraph, testStartTime }
 
     }
 
+    // ----------------------------------------------------------------------------------
+    // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
+    // ----------------------------------------------------------------------------------
+    beforeEach(() => {
+
+    })
 
     // ----------------------------------------------------------------------------------
     // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
@@ -163,16 +179,16 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         const test = cy.state().test
 
-        const resultsGraph = getTestAuditResults(test)
+        const {resultsGraph, testStartTime} = getTestAuditResults(test)
 
         // console.log('#################################### resultsGraph')
-        // console.log(resultsGraph) // TODO: VERIFY GRAPH IS CORRECT
+        // console.log(resultsGraph)
         // console.log('####################################')
 
         if (!resultsGraph) return
 
         const commands = Array.from(resultsGraph.values());
-        const testData = { test, testSlownessThreshold }
+        const testData = { test, testSlownessThreshold, testStartTime }
         const commandsData = { commands, commandSlownessThreshold }
 
 

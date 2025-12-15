@@ -7,6 +7,14 @@ const argsMaxLengths = {
     terminalConsole: 40,
 }
 
+const timeOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3, // Displays milliseconds with 3 digits (000-999)
+    hour12: false,
+};
+
 // **********************************************************************************
 // PRIVATE FUNCTIONS
 // **********************************************************************************
@@ -57,7 +65,7 @@ const formatCommandArgs = (args, consoleType) => {
 }
 
 
-const testDataAsString = (test, testSlownessThreshold) => {
+const testDataAsString = ({ test, testSlownessThreshold, testStartTime }) => {
     const slow = test.duration > testSlownessThreshold
 
     const testStatus = getStateIcon(test.state, slow)
@@ -75,7 +83,7 @@ const testDataAsString = (test, testSlownessThreshold) => {
 
     const testDataStr = `
 ------------------------------------------------------------------------------------------------------------------------------
-${testStatus} ${testDescription} | TEST TITLE: "${test.title}"${currentRetry} | DURATION: ${test.duration} ms | STATUS: ${test.state.toUpperCase()} - (File: "${relativeFile}")
+${testStatus} ${testDescription} | TEST TITLE: "${test.title}"${currentRetry} | START TIME: ${new Date(testStartTime).toLocaleTimeString(undefined, timeOptions)} | DURATION: ${test.duration} ms - (File: "${relativeFile}")
 ------------------------------------------------------------------------------------------------------------------------------`
 
     return testDataStr
@@ -125,7 +133,7 @@ const getCommandState = (commandInfo, commandSlownessThreshold) => {
     // return stateIconValue
 }
 
-const commandDataAsList = (commands, commandSlownessThreshold, consoleType) => {
+const commandDataAsList = ({ commands, commandSlownessThreshold, consoleType }) => {
     const list = []
 
     commands.forEach(commandInfo => {
@@ -134,16 +142,27 @@ const commandDataAsList = (commands, commandSlownessThreshold, consoleType) => {
         const commandType = ` | ${getCommandType(commandInfo)}`;
         const name = ` | ${getCommandName(commandInfo, consoleType)}`;
 
-        const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.enqueuedTime).toISOString()}`
-        const runTime = commandInfo.duration ? ` | Run time: ${commandInfo.duration} ms` : ''
-        const retries = ` | #Internal retries: ${commandInfo.retries ?? ""}`
+        const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.enqueuedTime).toLocaleTimeString(undefined, timeOptions)}`
+        // const commandEnqueuedTimePerformance = ` | Enqueued time performance: ${commandInfo.enqueuedTimePerformance.toFixed(3)} ms`
 
-        list.push(`      ${state}${runnableType}${commandType}${name}${commandEnqueuedTime}${runTime}${retries}`)
+        const commandStartTime = commandInfo.startTime ? ` | Start time: ${new Date(commandInfo.startTime).toLocaleTimeString(undefined, timeOptions)}` : ''
+        // const commandStartTimePerformance = commandInfo.startTimePerformance ? ` | Start time performance: ${commandInfo.startTimePerformance.toFixed(3)} ms` : ''
+
+        const commandRunTime = commandInfo.duration ? ` | Run time: ${commandInfo.duration} ms` : ''
+        // const commandRunTimePerformance = commandInfo.durationPerformance ? ` | Run time performance: ${commandInfo.durationPerformance.toFixed(3)} ms` : ''
+
+        // const commandEndTime = commandInfo.endTime ? ` | End time: ${new Date(commandInfo.endTime).toLocaleTimeString(undefined, timeOptions)}` : ''
+        // const commandEndTimePerformance = commandInfo.endTimePerformance ? ` | End time performance: ${commandInfo.endTimePerformance.toFixed(3)} ms` : ''
+
+        const commandRetries = ` | #Internal retries: ${commandInfo.retries ?? ""}`
+
+        list.push(`      ${state}${runnableType}${commandType}${name}${commandEnqueuedTime}${commandStartTime}${commandRunTime}${commandRetries}`)
+        // list.push(`      ${state}${runnableType}${commandType}${name}${commandEnqueuedTime}${commandEnqueuedTimePerformance}${commandStartTime}${commandStartTimePerformance}${commandRunTime}${commandRunTimePerformance}${commandRetries}`)
     })
     return list
 }
 
-const commandDataAsTable = (commands, commandSlownessThreshold, consoleType) => {
+const commandDataAsTable = ({ commands, commandSlownessThreshold, consoleType }) => {
     const tableRows = commands.map(commandInfo => {
         // const assertionCommand = assertionCommandAsString(commandInfo);
 
@@ -156,8 +175,19 @@ const commandDataAsTable = (commands, commandSlownessThreshold, consoleType) => 
             "Runnable type": runnableType,
             "Type": `${commandType}`,
             "Command": name,
-            "Enqueued time": new Date(commandInfo.enqueuedTime).toISOString(),
+
+            "Enqueued time": new Date(commandInfo.enqueuedTime).toLocaleTimeString(undefined, timeOptions),
+            // "Enqueued time performance": `${commandInfo.enqueuedTimePerformance.toFixed(3)} ms`,
+
+            "Start time": commandInfo.startTime ? new Date(commandInfo.startTime).toLocaleTimeString(undefined, timeOptions) : ``,
+            // "Start time performance": commandInfo.startTimePerformance ? `${commandInfo.startTimePerformance.toFixed(3)} ms` : ``,
+
+            // "End time": commandInfo.endTime ? new Date(commandInfo.endTime).toLocaleTimeString(undefined, timeOptions) : ``,
+            // "End time performance": commandInfo.endTimePerformance ? `${commandInfo.endTimePerformance.toFixed(3)} ms` : ``,
+
             "Run time": commandInfo.duration ? `${commandInfo.duration} ms` : ``,
+            // "Run time performance": commandInfo.durationPerformance ? `${commandInfo.durationPerformance.toFixed(3)} ms` : ``,
+
             "#Internal retries": commandInfo.retries ?? "",
         }
     });
@@ -172,63 +202,59 @@ const commandDataAsTable = (commands, commandSlownessThreshold, consoleType) => 
 // PUBLIC FUNCTION
 // ----------------
 const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
-    const { test, testSlownessThreshold } = testData
-    const { commands, commandSlownessThreshold } = commandsData
+    commandsData.consoleType = 'browserConsole'
 
     // Display test info in browser console
     // ------------------------------------
-    console.log(testDataAsString(test, testSlownessThreshold))
+    console.log(testDataAsString(testData))
 
     // Display commands executed in the browser console
     // -------------------------------------------default.statusIcon-----
-    console.log(commandDataAsList(commands, commandSlownessThreshold, 'browserConsole').join('\n'))
+    console.log(commandDataAsList(commandsData).join('\n'))
 }
 
 
 // PUBLIC FUNCTION
 // ----------------
 const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
-    const { test, testSlownessThreshold } = testData
-    const { commands, commandSlownessThreshold } = commandsData
+    commandsData.consoleType = 'terminalConsole'
 
     // Display test info in terminal console
     // -------------------------------------
-    cy.task('displayTestDataInTerminal', testDataAsString(test, testSlownessThreshold), { log: false })
+    cy.task('displayTestDataInTerminal', testDataAsString(testData), { log: false })
 
     // Display commands executed in the terminal console
     // -------------------------------------------------
-    cy.task('displayListInTerminal', commandDataAsList(commands, commandSlownessThreshold, 'terminalConsole'), { log: false })
+    cy.task('displayListInTerminal', commandDataAsList(commandsData), { log: false })
 }
 
 
 // PUBLIC FUNCTION
 // ----------------
 const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
-    const { test, testSlownessThreshold } = testData
-    const { commands, commandSlownessThreshold } = commandsData
+    commandsData.consoleType = 'browserConsole'
 
     // Display test info in browser console
     // ------------------------------------
-    console.log(testDataAsString(test, testSlownessThreshold))
+    console.log(testDataAsString(testData))
 
     // Display commands executed in the browser console
     // ------------------------------------------------
-    console.table(commandDataAsTable(commands, commandSlownessThreshold, 'browserConsole'));
+    console.table(commandDataAsTable(commandsData));
 }
 
 // PUBLIC FUNCTION
 // ----------------
 const displayTestAuditAsTableTerminalConsole = (testData, commandsData) => {
-    const { test, testSlownessThreshold } = testData
-    const { commands, commandSlownessThreshold } = commandsData
+    commandsData.consoleType = 'terminalConsole'
 
     // Display test info in terminal console
     // -------------------------------------
-    cy.task('displayTestDataInTerminal', testDataAsString(test, testSlownessThreshold), { log: false })
+    cy.task('displayTestDataInTerminal', testDataAsString(testData), { log: false })
 
     // Display commands executed in the browser console
     // ------------------------------------------------
-    cy.task('displayTableInTerminal', commandDataAsTable(commands, commandSlownessThreshold, 'terminalConsole'), { log: false });
+    cy.task('displayTableInTerminal', commandDataAsTable(commandsData), { log: false });
 }
 
 
@@ -238,5 +264,6 @@ export default {
     displayTestAuditAsTableBrowserConsole,
     displayTestAuditAsTableTerminalConsole,
 }
+
 
 
