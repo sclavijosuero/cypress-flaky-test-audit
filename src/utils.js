@@ -90,24 +90,6 @@ ${testStatus} ${testDescription} | TEST TITLE: "${test.title}"${currentRetry} | 
 }
 
 
-// const getAssertionsRecursive = (commandAttributes, originalCommandId) => {
-//     // console.log('-------getAssertionsRecursive')
-//     // console.log(commandAttributes)
-//     // console.log(originalCommandId)
-
-//     // if (commandAttributes)
-//     //   console.log('-------getAssertionsRecursive (', commandAttributes.name, ')', commandAttributes.args)
-
-//     if (!commandAttributes || !commandAttributes.id || commandAttributes.id === originalCommandId) return '';
-
-
-//     const assertionCommand = getAssertionsRecursive(commandAttributes.prev.attributes, originalCommandId) +
-//         ` .${commandAttributes.name.toUpperCase()}${formatCommandArgs(commandAttributes.args)}`;
-//     // console.log('-------BACK assertionCommand')
-//     // console.log(assertionCommand)
-//     return assertionCommand;
-// }
-
 const getCommandType = (commandInfo) => {
     return commandInfo.query ? 'Query'
         : commandInfo.type === 'assertion' ? (Cypress.env('flakyTestAuditConsoleType') === 'list' ? 'Assertion' : ' └─ Assertion')
@@ -126,11 +108,6 @@ const getCommandState = (commandInfo, commandSlownessThreshold) => {
     const stateDescription = getStateDescription(commandInfo.state, slow)
 
     return `${stateIconValue} ${stateDescription}`
-
-
-    // return commandInfo.state === 'queued' ? commandInfo.state.toUpperCase() + ' (**never run**)' : commandInfo.state.toUpperCase()
-    // return commandInfo.state.toUpperCase()
-    // return stateIconValue
 }
 
 const commandDataAsList = ({ commands, commandSlownessThreshold, consoleType }) => {

@@ -31,7 +31,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         testAudit.commandsEnqueued.set(commandId, {
             command: command,
             runInfo: {
-                commandId: commandId, // For convenence
+                commandId: commandId, // For convenience
                 enqueuedTime: new Date() - 0,
                 enqueuedTimePerformance: performance.now() - testAudit.testStartTimePerformance,
                 queueInsertionOrder: testAudit.commandsEnqueued.size,

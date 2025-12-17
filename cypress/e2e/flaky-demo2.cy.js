@@ -84,7 +84,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   
-  it.only('test 1.4-b', () => {  // ❌ TEST FAIL 
+  it('test 1.4-b', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick')
@@ -192,7 +192,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it.only('test 2.1', () => {  // ⏳ TEST PASS SLOW
+  it('test 2.1', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
@@ -207,7 +207,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
   })
 
-  it.only('test 2.2', () => {  // ❌ TEST FAIL
+  it('test 2.2', () => {  // ❌ TEST FAIL
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
