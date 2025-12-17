@@ -108,10 +108,6 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // cy.get('#contact input[data-testid="ContactNameeeee"]')  // It says that pass the get, but it is never found (so should fail)
     //   .should('have.value', 'paul mcCartney') // It says it fails the assertion, but was the get that failed
 
-    // INCORRECT
-    // cy.get('#contact input[data-testid="ContactName"]')  // It says that pass the get, that is correct
-    //   .should('have.value', 'paul mcCartney') // But mark as skipped the asertion, but it really passes
-
     // ---------------------------------------------------------------------
 
     cy.get('#contact input[data-testid="ContactName"]')
