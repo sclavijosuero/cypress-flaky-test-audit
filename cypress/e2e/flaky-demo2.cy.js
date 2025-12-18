@@ -32,7 +32,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  it('test 1.2', () => {  // ❌ TEST FAIL 
+  it.only('test 1.2', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })

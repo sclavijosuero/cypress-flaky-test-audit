@@ -46,6 +46,10 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // Return early if command enqueued data is missing or the command is missing
         if (!commandEnqueuedData || !commandEnqueuedData.command) return resultsGraph
 
+        // console.log('---------------------------')
+        // console.log(commandEnqueuedData)
+        // console.log('---------------------------')
+
         const runInfo = commandEnqueuedData.runInfo
         const $command = commandEnqueuedData.command
         const id = runInfo.commandId
@@ -169,7 +173,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
     })
 
-    
+
     // ----------------------------------------------------------------------------------
     // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
     // ----------------------------------------------------------------------------------
@@ -179,9 +183,17 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
 
         const test = cy.state().test
+        const currentTestId = test.id
+        const currentRetry = test._currentRetry
 
+        // Get the test audit results
+        const { resultsGraph, testStartTime } = getTestAuditResults(test)
 
-        const {resultsGraph, testStartTime} = getTestAuditResults(test)
+        // console.log('#################################### test')
+        // console.log(Cypress.spec)
+        // console.log(cy.state())
+        // console.log(test)
+        // console.log('####################################')
 
         // console.log('#################################### resultsGraph')
         // console.log(resultsGraph)
@@ -210,26 +222,31 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         }
 
 
-        const currentTestId = test.id
-        const currentRetry = test._currentRetry
-
-        // console.log('#################################### test')
-        // console.log(test)
-        // console.log('####################################')
-
-        // Ensure nested map structure: testAuditResults.get(currentTestId) is a Map of retries->result
+        // Info for a test definition
         if (!testAuditResults.has(currentTestId)) {
-            testAuditResults.set(currentTestId, { testTitle: test.title, retriesInfo: [] });
+            // Ensure nested map structure: testAuditResults.get(currentTestId) is a Map of retries->result
+            testAuditResults.set(currentTestId, {
+                testTitle: test.title, 
+                maxRetries: test._retries, 
+                retriesInfo: [] 
+            });
         }
- 
-       const retriesInfo = { currentRetry, testStartTime, resultsGraph }
-       testAuditResults.get(currentTestId).retriesInfo[currentRetry] = retriesInfo;
+
+        // Info specific for each test retry
+        const retriesInfo = { 
+            currentRetry, 
+            testStartTime, 
+            resultsGraph
+        }
+        testAuditResults.get(currentTestId).retriesInfo[currentRetry] = retriesInfo;
 
     })
 
     after(() => {
         if (Cypress.env('createFlakyTestAuditReport') === true || Cypress.env('createFlakyTestAuditReport') === 'true') {
-            Report.createFlakyTestAuditReportHtml(Cypress.spec, testAuditResults)
+            // If the report is configured to be created, create it
+            // sending the spec and the testAuditResults map
+            Report.createSuiteAuditHtmlReport(Cypress.spec, testAuditResults)
         }
     })
 }

@@ -98,36 +98,6 @@ const getStateDescription = (state, slow) => {
     return state === 'queued' ? stateValue + ' (*never run*)' : state === 'passed' && slow ? stateValue + ' (⏳ *slow*)' : stateValue
 }
 
-const formatCommandArgs = (args, consoleType) => {
-    // Max lengths for the different console types
-
-    const maxFunctionLength = argsMaxLengths[consoleType]
-    const maxObjectLength = argsMaxLengths[consoleType]
-    const maxStringLength = argsMaxLengths[consoleType]
-
-    const commandArgs = args.map(arg => {
-        if (typeof arg === 'function') {
-            // Callback function
-            let str = arg.toString().replace(/[\r\n]+/g, '').replace(/\s+/g, '');
-            return trimString(str, maxFunctionLength)
-        } else if (typeof arg === 'string') {
-            // String
-            return '`' + trimString(arg, maxStringLength) + '`'
-        } else if (typeof arg === 'object' && arg !== null && (arg.constructor === Object || Array.isArray(arg))) {
-            // Object or Array
-            const str = JSON.stringify(arg)
-            return trimString(str, maxObjectLength)
-        } else if (typeof arg === 'object' && arg !== null && arg.jquery) {
-            // jQuery object
-            return trimString(arg.get(0).outerHTML, maxObjectLength)
-        } else {
-            // Something else
-            return arg
-        }
-    })
-    return `(${commandArgs.join(', ')})`
-}
-
 
 const testDataAsString = ({ test, testSlownessThreshold, testStartTime }) => {
     const slow = test.duration > testSlownessThreshold
@@ -164,6 +134,35 @@ const getCommandName = (commandInfo, consoleType) => {
     return `${commandInfo.name.toUpperCase()} ${formatCommandArgs(commandInfo.args, consoleType)}`
 }
 
+const formatCommandArgs = (args, consoleType) => {
+    // Max lengths for the different console types
+
+    const maxFunctionLength = argsMaxLengths[consoleType]
+    const maxObjectLength = argsMaxLengths[consoleType]
+    const maxStringLength = argsMaxLengths[consoleType]
+
+    const commandArgs = args.map(arg => {
+        if (typeof arg === 'function') {
+            // Callback function
+            let str = arg.toString().replace(/[\r\n]+/g, '').replace(/\s+/g, '');
+            return trimString(str, maxFunctionLength)
+        } else if (typeof arg === 'string') {
+            // String
+            return '`' + trimString(arg, maxStringLength) + '`'
+        } else if (typeof arg === 'object' && arg !== null && (arg.constructor === Object || Array.isArray(arg))) {
+            // Object or Array
+            const str = JSON.stringify(arg)
+            return trimString(str, maxObjectLength)
+        } else if (typeof arg === 'object' && arg !== null && arg.jquery) {
+            // jQuery object
+            return trimString(arg.get(0).outerHTML, maxObjectLength)
+        } else {
+            // Something else
+            return arg
+        }
+    })
+    return `(${commandArgs.join(', ')})`
+}
 
 const getCommandState = (commandInfo, commandSlownessThreshold) => {
     const slow = commandInfo.duration > commandSlownessThreshold
