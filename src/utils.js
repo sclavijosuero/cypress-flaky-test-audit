@@ -15,6 +15,70 @@ const timeOptions = {
     hour12: false,
 };
 
+
+// **********************************************************************************
+// PUBLIC FUNCTIONS
+// **********************************************************************************
+
+// PUBLIC FUNCTION
+// ----------------
+const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
+    commandsData.consoleType = 'browserConsole'
+
+    // Display test info in browser console
+    // ------------------------------------
+    console.log(testDataAsString(testData))
+
+    // Display commands executed in the browser console
+    // -------------------------------------------default.statusIcon-----
+    console.log(commandDataAsList(commandsData).join('\n'))
+}
+
+
+// PUBLIC FUNCTION
+// ----------------
+const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
+    commandsData.consoleType = 'terminalConsole'
+
+    // Display test info in terminal console
+    // -------------------------------------
+    cy.task('displayTestDataInTerminal', testDataAsString(testData), { log: false })
+
+    // Display commands executed in the terminal console
+    // -------------------------------------------------
+    cy.task('displayListInTerminal', commandDataAsList(commandsData), { log: false })
+}
+
+
+// PUBLIC FUNCTION
+// ----------------
+const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
+    commandsData.consoleType = 'browserConsole'
+
+    // Display test info in browser console
+    // ------------------------------------
+    console.log(testDataAsString(testData))
+
+    // Display commands executed in the browser console
+    // ------------------------------------------------
+    console.table(commandDataAsTable(commandsData));
+}
+
+// PUBLIC FUNCTION
+// ----------------
+const displayTestAuditAsTableTerminalConsole = (testData, commandsData) => {
+    commandsData.consoleType = 'terminalConsole'
+
+    // Display test info in terminal console
+    // -------------------------------------
+    cy.task('displayTestDataInTerminal', testDataAsString(testData), { log: false })
+
+    // Display commands executed in the browser console
+    // ------------------------------------------------
+    cy.task('displayTableInTerminal', commandDataAsTable(commandsData), { log: false });
+}
+
+
 // **********************************************************************************
 // PRIVATE FUNCTIONS
 // **********************************************************************************
@@ -169,69 +233,6 @@ const commandDataAsTable = ({ commands, commandSlownessThreshold, consoleType })
         }
     });
     return tableRows
-}
-
-
-// **********************************************************************************
-// PUBLIC FUNCTIONS
-// **********************************************************************************
-
-// PUBLIC FUNCTION
-// ----------------
-const displayTestAuditAsListBrowserConsole = (testData, commandsData) => {
-    commandsData.consoleType = 'browserConsole'
-
-    // Display test info in browser console
-    // ------------------------------------
-    console.log(testDataAsString(testData))
-
-    // Display commands executed in the browser console
-    // -------------------------------------------default.statusIcon-----
-    console.log(commandDataAsList(commandsData).join('\n'))
-}
-
-
-// PUBLIC FUNCTION
-// ----------------
-const displayTestAuditAsListTerminalConsole = (testData, commandsData) => {
-    commandsData.consoleType = 'terminalConsole'
-
-    // Display test info in terminal console
-    // -------------------------------------
-    cy.task('displayTestDataInTerminal', testDataAsString(testData), { log: false })
-
-    // Display commands executed in the terminal console
-    // -------------------------------------------------
-    cy.task('displayListInTerminal', commandDataAsList(commandsData), { log: false })
-}
-
-
-// PUBLIC FUNCTION
-// ----------------
-const displayTestAuditAsTableBrowserConsole = (testData, commandsData) => {
-    commandsData.consoleType = 'browserConsole'
-
-    // Display test info in browser console
-    // ------------------------------------
-    console.log(testDataAsString(testData))
-
-    // Display commands executed in the browser console
-    // ------------------------------------------------
-    console.table(commandDataAsTable(commandsData));
-}
-
-// PUBLIC FUNCTION
-// ----------------
-const displayTestAuditAsTableTerminalConsole = (testData, commandsData) => {
-    commandsData.consoleType = 'terminalConsole'
-
-    // Display test info in terminal console
-    // -------------------------------------
-    cy.task('displayTestDataInTerminal', testDataAsString(testData), { log: false })
-
-    // Display commands executed in the browser console
-    // ------------------------------------------------
-    cy.task('displayTableInTerminal', commandDataAsTable(commandsData), { log: false });
 }
 
 

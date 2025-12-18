@@ -1,7 +1,9 @@
 /// <reference types="cypress" />
 
 export const specAudit = new Map() // Map() structure with the audit of all tests in the spec file (including retries)
-let currentTestId = null // Used by command events to identify the test
+// let currentTestId = null // Used by command events to identify the test
+// let currentRetry = null // Used to handle retries (event 'test:before:run')
+let currentTestIdAndRetry = null // Used to handle retries (event 'test:before:run')
 let currentCommandId = null // Used to handle retries (event 'command:retry')
 
 if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTestAudit') === 'true') {
@@ -10,8 +12,11 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log('................. test:before:run ')
         // console.log(test)
 
-        currentTestId = test.id
-        specAudit.set(currentTestId, {
+        const currentTestId = test.id
+        const currentRetry = test.currentRetry
+        currentTestIdAndRetry = `${currentTestId}-${currentRetry}`
+
+        specAudit.set(currentTestIdAndRetry, {
             test,
             commandsEnqueued: new Map(),
             testStartTime: new Date() - 0,
@@ -26,7 +31,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const runnable = Cypress.state('runnable')
 
         const commandId = command.id
-        const testAudit = specAudit.get(currentTestId)
+        const testAudit = specAudit.get(currentTestIdAndRetry)
 
         testAudit.commandsEnqueued.set(commandId, {
             command: command,
@@ -47,7 +52,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log(command)
 
         const commandId = command.attributes.id
-        const testAudit = specAudit.get(currentTestId)
+        const testAudit = specAudit.get(currentTestIdAndRetry)
         const enqueuedCommandData = testAudit.commandsEnqueued.get(commandId)
 
         enqueuedCommandData.command = command
@@ -71,7 +76,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log(command)
 
         const commandId = command.attributes.id
-        const testAudit = specAudit.get(currentTestId)
+        const testAudit = specAudit.get(currentTestIdAndRetry)
         const enqueuedCommandData = testAudit.commandsEnqueued.get(commandId)
 
         enqueuedCommandData.runInfo.endTime = new Date() - 0
@@ -88,7 +93,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // console.log('####### command:retry -> ' + currentCommandId)
         // console.log(options)
 
-        const testAudit = specAudit.get(currentTestId)
+        const testAudit = specAudit.get(currentTestIdAndRetry)
         const enqueuedCommandData = testAudit.commandsEnqueued.get(currentCommandId)
 
         enqueuedCommandData.runInfo.retryTime = new Date() - 0

@@ -1,5 +1,8 @@
 import Utils from './utils'
 import { specAudit } from './events'
+import Report from './report'
+
+const testAuditResults = new Map()
 
 // **********************************************************************************
 // ONLY RUN THE TEST AUDIT IF CONFIGURED AS SUCH
@@ -20,8 +23,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     // FUNCTIONS
     // ----------------------------------------------------------------------------------
 
-    const findNextCommandEnqueuedData = (currentTestId, currentCommandId) => {
-        const testAudit = specAudit.get(currentTestId)  // Is the Map
+    const findNextCommandEnqueuedData = (currentTestIdAndRetry, currentCommandId) => {
+        const testAudit = specAudit.get(currentTestIdAndRetry)  // Is the Map
         let found = false;
 
         // testAudit is an object with a property 'commandsEnqueued' that is a Map
@@ -39,7 +42,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     }
 
 
-    const processCommand = ({ currentTestId, commandEnqueuedData, prevCommandId, idAssertionCommandFailed }, resultsGraph = new Map()) => {
+    const processCommand = ({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId, idAssertionCommandFailed }, resultsGraph = new Map()) => {
         // Return early if command enqueued data is missing or the command is missing
         if (!commandEnqueuedData || !commandEnqueuedData.command) return resultsGraph
 
@@ -86,7 +89,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         }
 
         // This is the commandInfo of the next command execurted after currentCommandId (according to the efective run order)
-        const commandEnqueuedDataNext = specAudit.get(currentTestId).commandsEnqueued.get(nextCommandId);
+        const commandEnqueuedDataNext = specAudit.get(currentTestIdAndRetry).commandsEnqueued.get(nextCommandId);
 
         if (commandEnqueuedDataNext) {
             // Override command to get all the info including attributes and state after command was run
@@ -94,7 +97,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         }
 
         // This is the command Id for the next entry in the queue after currentCommandId (according to the enqued order)
-        const nextQueuedCommandId = findNextCommandEnqueuedData(currentTestId, id);
+        const nextQueuedCommandId = findNextCommandEnqueuedData(currentTestIdAndRetry, id);
 
         let idAssertionCommandThatWillFail
         if (attributes.query && state === 'failed') {
@@ -136,27 +139,24 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         resultsGraph.set(id, commandInfo)
 
-        return processCommand({ currentTestId, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id, idAssertionCommandFailed: idAssertionCommandThatWillFail }, resultsGraph)
+        return processCommand({ currentTestIdAndRetry, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id, idAssertionCommandFailed: idAssertionCommandThatWillFail }, resultsGraph)
     }
 
     const getTestAuditResults = (test) => {
 
         if (!test) return null
 
-        const currentTestId = test.id
+        const currentTestIdAndRetry = `${test.id}-${test._currentRetry}`
 
-        const testAudit = specAudit.get(currentTestId)
+        const testAudit = specAudit.get(currentTestIdAndRetry)
         const testStartTime = testAudit.testStartTime
         const commandsEnqueuedIterator = testAudit.commandsEnqueued.values()
 
         // Get the first command enqueued data
         const commandEnqueuedData = commandsEnqueuedIterator.next().value;
-        // console.log('#################################### testAudit')
-        // console.log(testAudit)
-        // console.log('####################################')
 
-        // TODO: Maybe replace the resultsGraph with a Map (ensude graph nodes added in order according to next field)
-        const resultsGraph = processCommand({ currentTestId, commandEnqueuedData, prevCommandId: null }, new Map())
+        // Process all the commands of the test and return a directed graph with the commands as nodes
+        const resultsGraph = processCommand({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId: null }, new Map())
 
         return { resultsGraph, testStartTime }
 
@@ -169,6 +169,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
     })
 
+    
     // ----------------------------------------------------------------------------------
     // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
     // ----------------------------------------------------------------------------------
@@ -179,6 +180,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         const test = cy.state().test
 
+
         const {resultsGraph, testStartTime} = getTestAuditResults(test)
 
         // console.log('#################################### resultsGraph')
@@ -187,6 +189,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         if (!resultsGraph) return
 
+        // Display the test ausig results in the browser condole/terminal console
         const commands = Array.from(resultsGraph.values());
         const testData = { test, testSlownessThreshold, testStartTime }
         const commandsData = { commands, commandSlownessThreshold }
@@ -206,5 +209,27 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             Utils.displayTestAuditAsTableTerminalConsole(testData, commandsData)
         }
 
+
+        const currentTestId = test.id
+        const currentRetry = test._currentRetry
+
+        // console.log('#################################### test')
+        // console.log(test)
+        // console.log('####################################')
+
+        // Ensure nested map structure: testAuditResults.get(currentTestId) is a Map of retries->result
+        if (!testAuditResults.has(currentTestId)) {
+            testAuditResults.set(currentTestId, { testTitle: test.title, retriesInfo: [] });
+        }
+ 
+       const retriesInfo = { currentRetry, testStartTime, resultsGraph }
+       testAuditResults.get(currentTestId).retriesInfo[currentRetry] = retriesInfo;
+
+    })
+
+    after(() => {
+        if (Cypress.env('createFlakyTestAuditReport') === true || Cypress.env('createFlakyTestAuditReport') === 'true') {
+            Report.createFlakyTestAuditReportHtml(Cypress.spec, testAuditResults)
+        }
     })
 }

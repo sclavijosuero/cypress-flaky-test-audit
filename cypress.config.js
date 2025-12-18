@@ -7,9 +7,11 @@ module.exports = defineConfig({
   viewportHeight: 1080,
   watchForFileChanges: false,
 
+  testAuditFolder: 'cypress/test-audit',
+
   retries: {
     runMode: 0,
-    openMode: 0,
+    openMode: 1,
   },
 
   e2e: {
