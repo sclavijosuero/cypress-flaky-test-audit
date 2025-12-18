@@ -50,7 +50,7 @@ const testAuditResultsMap = new Map()
 // PUBLIC FUNCTIONS
 // **********************************************************************************
 
-const createFlakyTestAuditReportHtml = (spec, testAuditResults) => {
+const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
     console.log('------------------------------------------------------------- createFlakyTestAuditReport')
     console.log(spec)
     console.log(testAuditResults)
@@ -66,5 +66,5 @@ const createFlakyTestAuditReportHtml = (spec, testAuditResults) => {
 
 
 export default {
-    createFlakyTestAuditReportHtml,
+    createSuiteAuditHtmlReport,
 }
