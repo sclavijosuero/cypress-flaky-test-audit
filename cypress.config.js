@@ -7,11 +7,11 @@ module.exports = defineConfig({
   viewportHeight: 1080,
   watchForFileChanges: false,
 
-  testAuditFolder: 'cypress/reports/flaky-test-audit',
+  testAuditFolder: 'cypress/reports/flaky-test-audit/',
 
   retries: {
     runMode: 0,
-    openMode: 1,
+    openMode: 0,
   },
 
   e2e: {

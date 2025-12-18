@@ -240,6 +240,8 @@ export default {
     displayTestAuditAsListTerminalConsole,
     displayTestAuditAsTableBrowserConsole,
     displayTestAuditAsTableTerminalConsole,
+    getCommandName,
+    formatCommandArgs
 }
 
 
