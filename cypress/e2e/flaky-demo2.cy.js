@@ -15,6 +15,19 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.visit('https://automationintesting.online/')
   })
 
+  afterEach(() => {
+    cy.wrap(20)
+      .should('be.eq', 20)
+    cy.wrap(10)
+      .should('be.eq', 30)
+    cy.log('1- afterEach')
+  })
+  
+  // afterEach(() => {
+  //   cy.log('2- afterEach')
+  // })
+
+
   it('test 1.1', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
@@ -32,7 +45,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  it.only('test 1.2', () => {  // ❌ TEST FAIL 
+  it('test 1.2', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })
@@ -83,7 +96,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  
+
   it('test 1.4-b', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
@@ -113,7 +126,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact input[data-testid="ContactName"]')
       .should('have.value', 'John Wickyyyyyy 😎')
       .and('have.class', 'form-control')
-      // .and('have.css', 'color', 'red') // ❌ C.FAIL
+    // .and('have.css', 'color', 'red') // ❌ C.FAIL
 
     cy.wait(timeToWait) // ⛔ C.NEVER RUN
     cy.get('#contact button') // ⛔ C. NEVER RUN
@@ -188,16 +201,16 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it.only('test 2.1', () => {  // ⏳ TEST PASS SLOW
+  it('test 2.1', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
     cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 }) // ✔️ C.PASS
 
     cy.then(() => {
-      cy.get('#contact button')  
-        .contains('Submity') 
-        .click()  
+      cy.get('#contact button')
+        .contains('Submity')
+        .click()
     })
 
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
@@ -210,9 +223,9 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 }) // ✔️ C.PASS
 
     cy.then(() => {
-      cy.get('#contact button')  
+      cy.get('#contact button')
         .contains('Submityyyyy')  // C.FAIL
-        .click()  
+        .click()
     })
 
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
@@ -277,11 +290,11 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ⛔ NEVER RUN
   })
 
-  it.only('test 7.1', () => {  // TEST PASS
+  it.only('test 7.1', () => {  // ❌ TEST FAIL
     const timeToWait = 200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
-    cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ PASS
+    // cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ PASS
 
     // Using .then() for demo purposes, but normally you would use .click() directly
     cy.get('#contact button')
@@ -290,9 +303,39 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
         cy.wrap($button)
           .click()
           .then(() => {
-            cy.url()
-              .should('include', 'NOT-MY-PAGE') // ❌ C.FAIL
+            if (Cypress.currentRetry == 0) {
+              cy.url()
+                .should('include', 'NOT-MY-PAGE')
+            }
+            else {
+              cy.url()
+                .should('include', '/automationintesting.online')
+            }
           })
+
+        cy.get('somethingnotfound')
+          .should('be.visible')
+          .and('have.css', 'color', 'red')
+      })
+
+    cy.wait(timeToWait)
+  })
+
+  // .only
+  it.only('test 7.1.1', () => {  // TEST FAIL
+    const timeToWait = 200;
+
+    cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
+    // cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ PASS
+
+    // Using .then() for demo purposes, but normally you would use .click() directly
+    cy.get('#contact button')
+      .contains('Submit')
+      .then($button => {
+        cy.then(() => {
+          cy.url()
+            .should('include', 'NOT-MY-PAGE') // ❌ C.FAIL
+        })
 
         cy.get('somethingnotfound')
           .should('be.visible')
@@ -300,8 +343,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
     cy.wait(timeToWait)
   })
-
-  it.only('test 7.2', () => {  // TEST PASS
+  // .only
+  it('test 7.2', () => {  // TEST PASS
     const timeToWait = 200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
@@ -400,12 +443,5 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
   })
 
-  afterEach(() => {
-    cy.log('--- one last command in beforeEach')
-  })
-
-  after(() => {
-    cy.log('------- <AFTER>')
-  })
 
 })

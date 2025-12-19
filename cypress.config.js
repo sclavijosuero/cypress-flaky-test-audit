@@ -11,7 +11,7 @@ module.exports = defineConfig({
 
   retries: {
     runMode: 0,
-    openMode: 0,
+    openMode: 1,
   },
 
   e2e: {

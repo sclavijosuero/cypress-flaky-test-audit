@@ -14,14 +14,30 @@ const colorByState = {
     pending: '#f9a825'
 };
 
+const emphasizeColor = (hexColor, factor = 0.35) => {
+    if (typeof hexColor !== 'string' || !/^#([0-9a-f]{6})$/i.test(hexColor)) {
+        return hexColor;
+    }
+    const num = parseInt(hexColor.slice(1), 16);
+    let r = (num >> 16) & 255;
+    let g = (num >> 8) & 255;
+    let b = num & 255;
+
+    r = Math.min(255, Math.round(r + (255 - r) * factor));
+    g = Math.min(255, Math.round(g + (255 - g) * factor));
+    b = Math.min(255, Math.round(b + (255 - b) * factor));
+
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+};
+
 // **********************************************************************************
 // PUBLIC FUNCTIONS
 // **********************************************************************************
 
 const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
-    console.log('------------------------------------------------------------- createFlakyTestAuditReport')
-    console.log(spec)
-    console.log(testAuditResults)
+    // console.log('------------------------------------------------------------- createFlakyTestAuditReport')
+    // console.log(spec)
+    // console.log(testAuditResults)
 
     const htmlReport = createSuiteAuditHtml(spec, testAuditResults)
 
@@ -38,33 +54,63 @@ const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
 
 
 const createSuiteAuditHtml = (spec, testAuditResults) => {
-
+    const generatedAt = new Date().toLocaleString();
 
     // Compose HTML for suite audit report
     let suiteInfoHtml = `
-        <h1>Flaky Test Audit Report</h1>
-        <div><b>Suite File Name:</b> ${esc(spec.fileName)}</div>
-        <div><b>Relative Path:</b> ${esc(spec.relative)}</div>
-        <div><b>Number of Tests:</b> ${testAuditResults.size}</div>
+        <section class="suite-overview">
+            <div class="suite-heading">
+                <p class="eyebrow">Flaky Test Audit</p>
+                <h1>${esc(spec.fileName)}</h1>
+            </div>
+            <div class="suite-stats">
+                <article class="stat-card">
+                    <span class="stat-label">Generated</span>
+                    <span class="stat-value">${esc(generatedAt)}</span>
+                </article>
+                <article class="stat-card">
+                    <span class="stat-label">Spec Path</span>
+                    <span class="stat-value stat-value--small">${esc(spec.relative)}</span>
+                </article>
+                <article class="stat-card">
+                    <span class="stat-label">Total Tests</span>
+                    <span class="stat-value">${testAuditResults.size}</span>
+                </article>
+            </div>
+        </section>
     `;
     let allTestsHtml = "";
 
     // testAuditResults: Map of testId (string) => {testTitle, maxRetries, retriesInfo}
     let testIdx = 0;
     for (const [testId, testData] of testAuditResults.entries()) {
-        let testHtml = `<section style="margin:2em 0"><h2>Test: ${esc(testData.testTitle)}</h2>
-            <div>Test ID: ${esc(testId)}</div>
-            <div>Max Retries: ${testData.maxRetries}</div>
+        let testHtml = `
+        <section class="test-card">
+            <header class="test-card__header">
+                <div>
+                    <p class="eyebrow eyebrow--dark">Test</p>
+                    <h2>${esc(testData.testTitle)}</h2>
+                </div>
+                <div class="test-meta">
+                    <div>
+                        <span class="meta-label">Max Retries</span>
+                        <span class="meta-value">${testData.maxRetries}</span>
+                    </div>
+                </div>
+            </header>
         `;
         // Iterate its retries
         if (Array.isArray(testData.retriesInfo)) {
             const retriesCount = testData.retriesInfo.length;
             const retryCards = testData.retriesInfo.map((retry, retryIdx) => {
                 const containerId = `graph_${testIdx}_${retryIdx}`;
+                const retryLabel = testData.maxRetries > 0
+                    ? `Retry #${retry.currentRetry}`
+                    : 'Execution';
                 return `
                     <div class="retry-card">
                         <div class="retry-meta">
-                            <div><b>Retry #${retry.currentRetry} Start Time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
+                            <div><b>${retryLabel} Start Time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
                             <div><b>Commands Graph:</b></div>
                         </div>
                         ${generateGraphHtml(retry.resultsGraph, containerId)}
@@ -78,7 +124,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 </div>
             `;
         } else {
-            testHtml += "<div>No retry information.</div>";
+            testHtml += `<div class="empty-state">No retry information was captured for this test.</div>`;
         }
         testHtml += "</section>";
         allTestsHtml += testHtml;
@@ -92,40 +138,214 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
     <meta charset="UTF-8" />
     <title>Flaky Test Audit Report Suite - ${esc(spec.fileName)}</title>
     <style>
-        body { font-family: arial, sans-serif; font-size: 13px; background: #fcfcfc; }
-        h1 { color: #37474f; }
-        h2 { color: #0277bd; margin-top:1.5em }
-        .retry-grid { display:flex; gap:20px; width:100%; margin:1em 0; }
-        .retry-grid.single { flex-direction: column; }
-        .retry-grid.multi { flex-wrap: nowrap; }
-        .retry-card { flex:1 1 0; min-width:0; border:1px dashed #aaa; background:#f8f8f8; padding:1em; display:flex; flex-direction:column; gap:0.5em; }
-        .retry-meta { font-size:12px; color:#37474f; }
-        .command-graph-wrapper { background: #fff; border: 1px solid #eee; margin-bottom: 2em; position: relative; height: 800px; }
-        .command-graph-wrapper .command-graph { position: absolute; inset: 0; }
-        .dot-label-layer { position:absolute; inset:0; pointer-events:none; font: 11px monospace; color:#263238; }
-        .dot-label-layer span { position:absolute; white-space:nowrap; transform: translateY(-50%); }
+        :root {
+            --bg-accent: radial-gradient(circle at 20% 20%, rgba(14,165,233,0.25), transparent 42%),
+                          radial-gradient(circle at 80% 0%, rgba(59,130,246,0.35), transparent 55%),
+                          #020617;
+            --text-primary: #0f172a;
+            --text-muted: #475569;
+            --border-color: rgba(15,23,42,0.08);
+            --card-shadow: 0 24px 70px rgba(15,23,42,0.12);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-accent);
+            color: #e2e8f0;
+        }
+        .page {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 48px 32px 64px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+        .suite-overview {
+            border-radius: 22px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.9), rgba(14,165,233,0.78));
+            color: #fff;
+            box-shadow: 0 28px 60px rgba(15,23,42,0.25);
+        }
+        .suite-heading h1 {
+            margin: 6px 0 4px;
+            font-size: 26px;
+            letter-spacing: -0.015em;
+        }
+        .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.35em;
+            font-size: 11px;
+            margin: 0;
+        }
+        .eyebrow--dark {
+            color: var(--text-muted);
+        }
+        .suite-stats {
+            margin-top: 18px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+        }
+        @media (max-width: 640px) {
+            .suite-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .stat-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: rgba(255,255,255,0.75);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .stat-value--small {
+            font-size: 15px;
+            word-break: break-all;
+        }
+        .test-card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: var(--card-shadow);
+            color: var(--text-primary);
+        }
+        .test-card__header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .test-card__header h2 {
+            margin: 4px 0 0;
+            font-size: 24px;
+            color: var(--text-primary);
+        }
+        .test-meta {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .meta-label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+        }
+        .meta-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .retry-grid {
+            margin-top: 24px;
+            display: grid;
+            gap: 20px;
+        }
+        .retry-grid.multi {
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        }
+        .retry-grid.single {
+            grid-template-columns: 1fr;
+        }
+        .retry-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+        }
+        .retry-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .command-graph-wrapper {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            margin-bottom: 0;
+            position: relative;
+            height: 720px;
+            overflow: hidden;
+        }
+        .command-graph-wrapper .command-graph {
+            position: absolute;
+            inset: 0;
+        }
+        .dot-label-layer {
+            position:absolute;
+            inset:0;
+            pointer-events:none;
+            font: 11px monospace;
+            color: var(--text-primary);
+        }
+        .dot-label-layer span {
+            position:absolute;
+            white-space:nowrap;
+            transform: translateY(-50%);
+        }
         .command-tooltip {
             position: absolute;
             display: none;
-            max-width: 350px;
-            padding: 8px 10px;
-            border-radius: 4px;
-            background: rgba(38, 50, 56, 0.95);
+            max-width: 360px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(15,23,42,0.92);
             color: #fff;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.5;
             pointer-events: crosshair;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+            box-shadow: 0 16px 40px rgba(15,23,42,0.4);
             z-index: 5;
         }
-        .command-tooltip strong { display: inline-block; min-width: 90px; font-weight: 600; }
+        .command-tooltip strong {
+            display: inline-block;
+            min-width: 90px;
+            font-weight: 600;
+        }
+        .empty-state {
+            padding: 20px;
+            background: #f1f5f9;
+            border: 1px dashed #cbd5f5;
+            border-radius: 16px;
+            color: var(--text-muted);
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet"/>
 </head>
 <body>
-    ${suiteInfoHtml}
-    ${allTestsHtml}
+    <div class="page">
+        ${suiteInfoHtml}
+        ${allTestsHtml}
+    </div>
 </body>
 </html>
     `;
@@ -200,8 +420,8 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
 
     const maxDuration = durations.length ? Math.max(...durations) : 0;
 
-    const minBoxWidth = 70;
-    const maxBoxWidth = 150;
+    const minBoxWidth = 90;
+    const maxBoxWidth = 220;
     const minBoxHeight = 50;
     const maxBoxHeight = 350;
     const verticalSpacing = 80;
@@ -232,7 +452,13 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         // if (argsPreview) labelParts.push(argsPreview);
         if (hasDuration) labelParts.push(`${Math.round(duration)} ms`);
 
-        const nodeColor = colorByState[cmd.state] || '#546e7a';
+        const isSkippedAssertion = cmd?.type === 'assertion' && cmd?.state === 'skipped';
+        const nodeStateKey = isSkippedAssertion ? 'passed' : cmd.state;
+        let nodeColor = colorByState[nodeStateKey] || '#546e7a';
+        const isNonTestRunnable = cmd?.runnableType && cmd.runnableType !== 'test';
+        if (isNonTestRunnable) {
+            nodeColor = emphasizeColor(nodeColor, 0.6);
+        }
 
         const width = hasDuration
             ? Math.max(
@@ -245,14 +471,15 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         const orderIndex = orderIndexById[id] ?? queueIndex;
         const nodeY = nodeBaseY + orderIndex * verticalSpacing;
         const tooltipHtml = buildTooltip(cmd, duration);
-        const node = {
+            const nodeFontColor = isNonTestRunnable ? '#0b1220' : '#fff';
+            const node = {
             id,
             label: labelParts.join('\n'),
             x: nodeX,
             y: nodeY,
             fixed: true,
-            color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
-            font: { face: 'monospace', align: 'left', multi: 'md', color: '#fff' },
+                color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
+                font: { face: 'monospace', align: 'left', multi: 'md', color: nodeFontColor },
             tooltip: tooltipHtml
         };
         tooltipByNode[id] = tooltipHtml;
@@ -265,7 +492,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             node.shape = 'dot';
             node.size = 10;
             node.label = '';
-            node.font = { face: 'monospace', color: '#263238', align: 'left' };
+                node.font = { face: 'monospace', color: '#263238', align: 'left' };
             dotLabels[id] = labelParts.join(' ');
         }
 
@@ -449,6 +676,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             `<div><strong>Command:</strong> ${esc(cmd.name || 'command')}</div>`,
             argsText ? `<div><strong>Args:</strong> ${esc(argsText)}</div>` : '',
             `<div><strong>State:</strong> ${esc(cmd.state || 'unknown')}</div>`,
+            cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
             `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
             `<div><strong>Execution order:</strong> ${esc(cmd.executionOrder ?? '-')}</div>`,
             `<div><strong>Duration:</strong> ${esc(duration > 0 ? Math.round(duration) + ' ms' : 'n/a')}</div>`
