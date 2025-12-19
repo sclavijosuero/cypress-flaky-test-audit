@@ -139,6 +139,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             prevCommandId,
 
             nextQueuedCommandId,
+            prevQueuedCommandId: undefined,
+            nestedLevel: undefined,
         }
 
         resultsGraph.set(id, commandInfo)
@@ -160,10 +162,107 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const commandEnqueuedData = commandsEnqueuedIterator.next().value;
 
         // Process all the commands of the test and return a directed graph with the commands as nodes
-        const resultsGraph = processCommand({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId: null }, new Map())
+        let resultsGraph = processCommand({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId: null }, new Map())
+
+        resultsGraph = setPrevQueuedCommandAndNestedLevel(resultsGraph, 0)
 
         return { resultsGraph, testStartTime }
 
+    }
+
+    const setPrevQueuedCommandAndNestedLevel = (resultsGraph, nestedLevel = 0) => {
+        if (!resultsGraph || typeof resultsGraph.forEach !== 'function') return resultsGraph
+
+        const visited = new Set()
+
+        const traverse = (commandId) => {
+            if (!commandId || visited.has(commandId)) return
+            const node = resultsGraph.get(commandId)
+            if (!node) {
+                visited.add(commandId)
+                return
+            }
+
+            visited.add(commandId)
+
+            const nextQueuedId = node.nextQueuedCommandId
+            if (nextQueuedId && resultsGraph.has(nextQueuedId)) {
+                const nextQueuedNode = resultsGraph.get(nextQueuedId)
+                if (nextQueuedNode) {
+                    nextQueuedNode.prevQueuedCommandId = node.id
+                }
+                traverse(nextQueuedId)
+            }
+
+            const nextCommandId = node.nextCommandId
+            if (nextCommandId && resultsGraph.has(nextCommandId)) {
+                traverse(nextCommandId)
+            }
+        }
+
+        for (const commandId of resultsGraph.keys()) {
+            traverse(commandId)
+        }
+
+        const levelMemo = new Map()
+        const resolving = new Set()
+
+        const getQueueOrder = (node) => typeof node?.queueInsertionOrder === 'number' ? node.queueInsertionOrder : null
+
+        const assignNestedLevel = (commandId) => {
+            if (!commandId) return nestedLevel
+            if (levelMemo.has(commandId)) return levelMemo.get(commandId)
+            if (resolving.has(commandId)) return nestedLevel
+
+            const node = resultsGraph.get(commandId)
+            if (!node) {
+                levelMemo.set(commandId, nestedLevel)
+                return nestedLevel
+            }
+
+            resolving.add(commandId)
+
+            let level = nestedLevel
+            if (!node.prevCommandId) {
+                level = nestedLevel
+            } else {
+                const prevNode = resultsGraph.get(node.prevCommandId)
+                const prevLevel = assignNestedLevel(node.prevCommandId)
+                const prevQueueOrder = getQueueOrder(prevNode)
+                const currentQueueOrder = getQueueOrder(node)
+
+                if (prevQueueOrder !== null && currentQueueOrder !== null) {
+                    if (currentQueueOrder === prevQueueOrder + 1) {
+                        level = prevLevel
+                    } else if (currentQueueOrder > prevQueueOrder) {
+                        level = node.runnableType && node.runnableType !== 'test'
+                            ? prevLevel
+                            : prevLevel + 1
+                    } else if (currentQueueOrder < prevQueueOrder) {
+                        if (node.prevQueuedCommandId && resultsGraph.has(node.prevQueuedCommandId)) {
+                            level = assignNestedLevel(node.prevQueuedCommandId)
+                        } else {
+                            level = nestedLevel
+                        }
+                    } else {
+                        level = prevLevel
+                    }
+                } else {
+                    level = prevLevel
+                }
+            }
+
+            node.nestedLevel = level
+            levelMemo.set(commandId, level)
+            resolving.delete(commandId)
+            return level
+        }
+
+        for (const commandId of resultsGraph.keys()) {
+            assignNestedLevel(commandId)
+        }
+
+        return resultsGraph
     }
 
     // ----------------------------------------------------------------------------------

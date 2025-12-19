@@ -188,7 +188,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it('test 2.1', () => {  // ⏳ TEST PASS SLOW
+  it.only('test 2.1', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
@@ -277,7 +277,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ⛔ NEVER RUN
   })
 
-  it('test 7', () => {  // ❌ TEST FAIL 
+  it.only('test 7.1', () => {  // TEST PASS
     const timeToWait = 200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
@@ -285,22 +285,42 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
     // Using .then() for demo purposes, but normally you would use .click() directly
     cy.get('#contact button')
-      .contains('SubmitYYYYYYYY')
+      .contains('Submit')
       .then($button => {
         cy.wrap($button)
           .click()
           .then(() => {
             cy.url()
-              .should('include', 'NOT-MY-PAGE')
+              .should('include', 'NOT-MY-PAGE') // ❌ C.FAIL
           })
 
         cy.get('somethingnotfound')
-          .should('be.visible') // ❌ never reached
+          .should('be.visible')
       })
 
-    cy.wait(timeToWait) // ⛔ NEVER RUN
+    cy.wait(timeToWait)
   })
 
+  it.only('test 7.2', () => {  // TEST PASS
+    const timeToWait = 200;
+
+    cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
+    cy.get('#contact input[data-testid="ContactEmail"]').type('ringo.starr@gmail.com', { delay: 0 }) // ✔️ PASS
+
+    // Using .then() for demo purposes, but normally you would use .click() directly
+    cy.get('#contact button')
+      .contains('Submit')
+      .then($button => {
+        cy.wrap($button)
+          .click()
+          .then(() => {
+            cy.url()
+              .should('include', 'NOT-MY-PAGE') // ❌ C.FAIL
+          })
+      })
+
+    cy.wait(timeToWait)
+  })
   //---------------------------------------------------------------------
 
   it('test 8', () => {  // ❌ TEST FAIL 

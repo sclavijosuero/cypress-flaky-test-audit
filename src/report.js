@@ -8,47 +8,6 @@ import Utils from './utils'
 // CONSTANTS
 // **********************************************************************************
 
-// const 
-// const createFlakyTestAuditHtmlReport = (spec, testAuditResults) => {
-//     const auditReportName = spec.name
-
-//     return `
-// <!doctype html>
-// <html>
-//   <head>
-//     <title>Flaky Test Audit Report Suite - ${spec.fileName}</title>
-
-//     <style>
-//       body,
-//       html {
-//         font-family: arial, sans-serif;
-//         font-size: 11pt;
-//       }
-
-//       #visualization {
-//         box-sizing: border-box;
-//         width: 100%;
-//         height: 300px;
-//       }
-//     </style>
-//         <!-- note: moment.js must be loaded before vis-timeline-graph2d or the embedded version of moment.js is used -->
-//     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
-
-//     <script src="https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
-//     <link
-//       href=".https://unpkg.com/vis-timeline@latesthttps://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css"
-//       rel="stylesheet"
-//       type="text/css"
-//     />
-//   </head>
-//   <body>
-//     <h1>Flaky Test Audit Report - ${spec.fileName}</h1>
-//     <div>Suite: ${spec.relative}</div>
-//     <div>Number of tests executed${spec.name}</div>
-//   </body>
-// </html>
-// `
-// }
 
 // **********************************************************************************
 // PUBLIC FUNCTIONS
@@ -60,7 +19,7 @@ const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
     console.log(testAuditResults)
 
     const htmlReport = createSuiteAuditHtml(spec, testAuditResults)
-    console.log(htmlReport)
+
     const dateStr = new Date().toISOString().replace(/[:]/g, '-');
     cy.writeFile(
         Cypress.config('testAuditFolder') +
@@ -74,9 +33,7 @@ const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
 
 
 const createSuiteAuditHtml = (spec, testAuditResults) => {
-    console.log('------------------------------------------------------------- createFlakyTestAuditReport')
-    console.log(spec)
-    console.log(testAuditResults)
+
 
     // Utility function to escape HTML
     function esc(str) {
@@ -134,8 +91,8 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         const verticalSpacing = 95;
         const nodeBaseY = 40; // keep queue on a visible baseline
 
-        const groupsMeta = {};
         const tooltipByNode = {};
+        const dotLabels = {};
 
         const nodes = queueOrderedIds.map(id => {
             const cmd = commands[id];
@@ -162,14 +119,10 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 : undefined;
 
             const depth = depthById[id] || 0;
-            const subgroupName = `level-${depth}`;
-            groupsMeta[subgroupName] = groupsMeta[subgroupName] || {};
-
             const nodeY = nodeBaseY - depth * verticalSpacing;
             const tooltipHtml = buildTooltip(cmd, duration);
             const node = {
                 id,
-                group: subgroupName,
                 label: labelParts.join('\n'),
                 x: queueIndexById[id] * horizontalSpacing,
                 y: nodeY,
@@ -183,10 +136,13 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             if (hasDuration) {
                 node.shape = 'box';
                 node.widthConstraint = { minimum: width, maximum: width };
+                node.font.align = 'center';
             } else {
                 node.shape = 'dot';
                 node.size = 10;
-                node.font = { face: 'monospace', color: '#263238', align: 'center' };
+                node.label = '';
+                node.font = { face: 'monospace', color: '#263238', align: 'left' };
+                dotLabels[id] = labelParts.join(' ');
             }
 
             return node;
@@ -214,24 +170,29 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
 
         const wrapperId = `${graphContainerId}_wrapper`;
         const tooltipId = `${graphContainerId}_tooltip`;
+        const labelsId = `${graphContainerId}_labels`;
 
         return `
             <div id="${esc(wrapperId)}" class="command-graph-wrapper">
                 <div id="${esc(graphContainerId)}" class="command-graph"></div>
+                <div id="${esc(labelsId)}" class="dot-label-layer" aria-hidden="true"></div>
                 <div id="${esc(tooltipId)}" class="command-tooltip" role="tooltip" aria-hidden="true"></div>
             </div>
             <script>
             (function() {
                 var nodes = new vis.DataSet(${JSON.stringify(nodes)});
                 var edges = new vis.DataSet(${JSON.stringify(edges)});
-                var groups = ${JSON.stringify(groupsMeta)};
                 var nodeTooltips = ${JSON.stringify(tooltipByNode)};
+                var dotLabels = ${JSON.stringify(dotLabels)};
+                var dotLabelIds = Object.keys(dotLabels);
                 var container = document.getElementById("${esc(graphContainerId)}");
                 var tooltip = document.getElementById("${esc(tooltipId)}");
+                var labelLayer = document.getElementById("${esc(labelsId)}");
                 var data = { nodes: nodes, edges: edges };
                 var options = {
+                    height: '100%',
+                    width: '100%',
                     clickToUse: true,
-                    groups: groups,
                     physics: false,
                     layout: {
                       improvedLayout: true,
@@ -248,15 +209,37 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                         hover: false
                     },
                     edges: {
-                        smooth: false
+                        smooth: true
                     }
                 };
                 var network = new vis.Network(container, data, options);
+                network.once('afterDrawing', function () {
+                    network.fit({ animation: false });
+                });
+                network.on('afterDrawing', renderDotLabels);
+                network.on('zoom', renderDotLabels);
+                network.on('dragEnd', renderDotLabels);
 
                 function hideTooltip() {
                     if (!tooltip) return;
                     tooltip.style.display = 'none';
                     tooltip.setAttribute('aria-hidden', 'true');
+                }
+
+                function renderDotLabels() {
+                    if (!labelLayer || !dotLabelIds.length) return;
+                    labelLayer.innerHTML = "";
+                    var positions = network.getPositions(dotLabelIds);
+                    dotLabelIds.forEach(function(id) {
+                        var pos = positions[id];
+                        if (!pos) return;
+                        var domPos = network.canvasToDOM(pos);
+                        var labelEl = document.createElement('span');
+                        labelEl.textContent = dotLabels[id];
+                        labelEl.style.left = (domPos.x + 14) + 'px';
+                        labelEl.style.top = domPos.y + 'px';
+                        labelLayer.appendChild(labelEl);
+                    });
                 }
 
                 network.on('click', function(params) {
@@ -389,16 +372,25 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         `;
         // Iterate its retries
         if (Array.isArray(testData.retriesInfo)) {
-            testData.retriesInfo.forEach((retry, retryIdx) => {
+            const retriesCount = testData.retriesInfo.length;
+            const retryCards = testData.retriesInfo.map((retry, retryIdx) => {
                 const containerId = `graph_${testIdx}_${retryIdx}`;
-                testHtml += `
-                    <div style="margin:1em 0 1em 1em; border:1px dashed #aaa; background:#f8f8f8;">
-                        <div><b>Retry #${retry.currentRetry} Start Time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
-                        <div><b>Commands Graph:</b></div>
+                return `
+                    <div class="retry-card">
+                        <div class="retry-meta">
+                            <div><b>Retry #${retry.currentRetry} Start Time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
+                            <div><b>Commands Graph:</b></div>
+                        </div>
                         ${generateGraphHtml(retry.resultsGraph, containerId)}
                     </div>
                 `;
-            });
+            }).join('');
+
+            testHtml += `
+                <div class="retry-grid ${retriesCount > 1 ? 'multi' : 'single'}">
+                    ${retryCards}
+                </div>
+            `;
         } else {
             testHtml += "<div>No retry information.</div>";
         }
@@ -417,8 +409,15 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         body { font-family: arial, sans-serif; font-size: 13px; background: #fcfcfc; }
         h1 { color: #37474f; }
         h2 { color: #0277bd; margin-top:1.5em }
-        .command-graph-wrapper { background: #fff; border: 1px solid #eee; margin-bottom: 2em; position: relative; height: 800px; }
+        .retry-grid { display:flex; gap:20px; width:100%; margin:1em 0; }
+        .retry-grid.single { flex-direction: column; }
+        .retry-grid.multi { flex-wrap: nowrap; }
+        .retry-card { flex:1 1 0; min-width:0; border:1px dashed #aaa; background:#f8f8f8; padding:1em; display:flex; flex-direction:column; gap:0.5em; }
+        .retry-meta { font-size:12px; color:#37474f; }
+        .command-graph-wrapper { background: #fff; border: 1px solid #eee; margin-bottom: 2em; position: relative; height: 700px; }
         .command-graph-wrapper .command-graph { position: absolute; inset: 0; }
+        .dot-label-layer { position:absolute; inset:0; pointer-events:none; font: 11px monospace; color:#263238; }
+        .dot-label-layer span { position:absolute; white-space:nowrap; transform: translateY(-50%); }
         .command-tooltip {
             position: absolute;
             display: none;
@@ -448,646 +447,6 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
 }
 
 
-// **********************************************************************************
-// PRIVATE FUNCTIONS
-// **********************************************************************************
-
-
-
 export default {
     createSuiteAuditHtmlReport,
 }
-
-// // Example of a Cypress spec object
-// {
-//     "id": "U3BlYzpDOi9QZXJzb25hbC9HaXRIdWJfUmVwb3MvY3lwcmVzcy1mbGFreS10ZXN0LWF1ZGl0L2N5cHJlc3MvZTJlL2ZsYWt5LWRlbW8yLmN5Lmpz",
-//     "name": "flaky-demo2.cy.js",
-//     "specType": "integration",
-//     "absolute": "C:/Personal/GitHub_Repos/cypress-flaky-test-audit/cypress/e2e/flaky-demo2.cy.js",
-//     "baseName": "flaky-demo2.cy.js",
-//     "fileName": "flaky-demo2",
-//     "specFileExtension": ".cy.js",
-//     "fileExtension": ".js",
-//     "relative": "cypress\\e2e\\flaky-demo2.cy.js",
-//     "__typename": "Spec"
-// }
-
-
-
-// // Example of structure containing all tests in a suite and for each test the retries and the results direction graph for each of the retries
-// new Map([
-//     [
-//         "r3",
-//         {
-//             "testTitle": "test 1",
-//             "maxRetries": 1,
-//             "retriesInfo": [
-//                 {
-//                     "currentRetry": 0,
-//                     "testStartTime": 1766074933989,
-//                     "resultsGraph": new Map([
-//                         [
-//                             "ch-https://automationintesting.online-482-cmd-806",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-482-cmd-806",
-//                                 "name": "visit",
-//                                 "args": [
-//                                     "https://automationintesting.online/"
-//                                 ],
-//                                 "type": "parent",
-//                                 "runnableType": "before each",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766074934099,
-//                                 "enqueuedTimePerformance": 110.09999996423721,
-//                                 "startTime": 1766074934100,
-//                                 "startTimePerformance": 110.30000001192093,
-//                                 "endTime": 1766074934957,
-//                                 "endTimePerformance": 967.3999999761581,
-//                                 "duration": 857,
-//                                 "durationPerformance": 857.0999999642372,
-//                                 "retries": 0,
-//                                 "queueInsertionOrder": 0,
-//                                 "executionOrder": 0,
-//                                 "nextCommandId": "ch-https://automationintesting.online-483-cmd-807",
-//                                 "prevCommandId": null,
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-483-cmd-807"
-//                             }
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-500-cmd-836",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-500-cmd-836",
-//                                 "name": "get",
-//                                 "args": [
-//                                     "#contact input[data-testid=\"ContactName\"]"
-//                                 ],
-//                                 "query": true,
-//                                 "runnableType": "test",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 829.6000000238419,
-//                                 "startTime": 1766075398097,
-//                                 "startTimePerformance": 831,
-//                                 "endTime": 1766075398668,
-//                                 "endTimePerformance": 1402.3999999761581,
-//                                 "duration": 571,
-//                                 "durationPerformance": 571.3999999761581,
-//                                 "retries": 25,
-//                                 "queueInsertionOrder": 1,
-//                                 "executionOrder": 10,
-//                                 "nextCommandId": "ch-https://automationintesting.online-500-cmd-837",
-//                                 "prevCommandId": "ch-https://automationintesting.online-499-cmd-835",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-500-cmd-837"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-500-cmd-837",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-500-cmd-837",
-//                                 "name": "type",
-//                                 "args": [
-//                                     "paul mcCartney",
-//                                     {
-//                                         "delay": 200
-//                                     }
-//                                 ],
-//                                 "type": "child",
-//                                 "runnableType": "test",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830,
-//                                 "startTime": 1766075398669,
-//                                 "startTimePerformance": 1402.3999999761581,
-//                                 "endTime": 1766075401816,
-//                                 "endTimePerformance": 4549.5,
-//                                 "duration": 3147,
-//                                 "durationPerformance": 3147.100000023842,
-//                                 "retries": 2,
-//                                 "queueInsertionOrder": 2,
-//                                 "executionOrder": 10,
-//                                 "nextCommandId": "ch-https://automationintesting.online-501-cmd-838",
-//                                 "prevCommandId": "ch-https://automationintesting.online-500-cmd-836",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-501-cmd-838"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-507-cmd-849",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-507-cmd-849",
-//                                 "name": "visit",
-//                                 "args": [
-//                                     "https://automationintesting.online/"
-//                                 ],
-//                                 "type": "parent",
-//                                 "runnableType": "before each",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075406005,
-//                                 "enqueuedTimePerformance": 60,
-//                                 "startTime": 1766075406005,
-//                                 "startTimePerformance": 60.30000001192093,
-//                                 "endTime": 1766075406776,
-//                                 "endTimePerformance": 831.3999999761581,
-//                                 "duration": 771,
-//                                 "durationPerformance": 771.0999999642372,
-//                                 "retries": 0,
-//                                 "queueInsertionOrder": 0,
-//                                 "executionOrder": 0,
-//                                 "nextCommandId": "ch-https://automationintesting.online-508-cmd-850",
-//                                 "prevCommandId": null,
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-508-cmd-850"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-501-cmd-839",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-501-cmd-839",
-//                                 "name": "should",
-//                                 "args": [
-//                                     "have.value",
-//                                     "paul mcCartney"
-//                                 ],
-//                                 "type": "assertion",
-//                                 "runnableType": "test",
-//                                 "state": "failed",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830.1999999880791,
-//                                 "queueInsertionOrder": 4,
-//                                 "nextCommandId": "ch-https://automationintesting.online-501-cmd-840",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-838",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-501-cmd-840"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-501-cmd-840",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-501-cmd-840",
-//                                 "name": "and",
-//                                 "args": [
-//                                     "have.class",
-//                                     "form-control"
-//                                 ],
-//                                 "type": "assertion",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830.3000000119209,
-//                                 "queueInsertionOrder": 5,
-//                                 "nextCommandId": "ch-https://automationintesting.online-501-cmd-841",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-839",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-501-cmd-841"
-//                             }
-
-//                         ],
-//                         [
-
-//                             "ch-https://automationintesting.online-501-cmd-841",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-501-cmd-841",
-//                                 "name": "and",
-//                                 "args": [
-//                                     "have.css",
-//                                     "color",
-//                                     "red"
-//                                 ],
-//                                 "type": "assertion",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830.3000000119209,
-//                                 "queueInsertionOrder": 6,
-//                                 "nextCommandId": "ch-https://automationintesting.online-502-cmd-842",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-840",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-502-cmd-842"
-//                             }
-
-//                         ],
-//                         [
-
-//                             "ch-https://automationintesting.online-502-cmd-842",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-502-cmd-842",
-//                                 "name": "wait",
-//                                 "args": [
-//                                     500
-//                                 ],
-//                                 "type": "dual",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.5,
-//                                 "queueInsertionOrder": 7,
-//                                 "nextCommandId": "ch-https://automationintesting.online-503-cmd-843",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-841",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-503-cmd-843"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-503-cmd-843",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-503-cmd-843",
-//                                 "name": "get",
-//                                 "args": [
-//                                     "#contact button"
-//                                 ],
-//                                 "query": true,
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.6000000238419,
-//                                 "queueInsertionOrder": 8,
-//                                 "nextCommandId": "ch-https://automationintesting.online-503-cmd-844",
-//                                 "prevCommandId": "ch-https://automationintesting.online-502-cmd-842",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-503-cmd-844"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-503-cmd-844",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-503-cmd-844",
-//                                 "name": "contains",
-//                                 "args": [
-//                                     "Submit"
-//                                 ],
-//                                 "query": true,
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.6999999880791,
-//                                 "queueInsertionOrder": 9,
-//                                 "nextCommandId": "ch-https://automationintesting.online-503-cmd-845",
-//                                 "prevCommandId": "ch-https://automationintesting.online-503-cmd-843",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-503-cmd-845"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-503-cmd-845",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-503-cmd-845",
-//                                 "name": "click",
-//                                 "args": [],
-//                                 "type": "child",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.8999999761581,
-//                                 "queueInsertionOrder": 10,
-//                                 "nextCommandId": "ch-https://automationintesting.online-504-cmd-846",
-//                                 "prevCommandId": "ch-https://automationintesting.online-503-cmd-844",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-504-cmd-846"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-504-cmd-846",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-504-cmd-846",
-//                                 "name": "log",
-//                                 "args": [
-//                                     "--- one last command in beforeEach"
-//                                 ],
-//                                 "type": "parent",
-//                                 "runnableType": "after each",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075405825,
-//                                 "enqueuedTimePerformance": 8559.199999988079,
-//                                 "startTime": 1766075405826,
-//                                 "startTimePerformance": 8559.5,
-//                                 "endTime": 1766075405828,
-//                                 "endTimePerformance": 8561.5,
-//                                 "duration": 2,
-//                                 "durationPerformance": 2,
-//                                 "retries": 0,
-//                                 "queueInsertionOrder": 11,
-//                                 "executionOrder": 11,
-//                                 "prevCommandId": "ch-https://automationintesting.online-503-cmd-845",
-//                                 "nextQueuedCommandId": null
-//                             }
-
-//                         ]
-
-//                     ])
-//                 },
-//                 {
-//                     "currentRetry": 1,
-//                     "testStartTime": 1766074943254,
-//                     "resultsGraph": {}
-//                 }
-//             ]
-//         }
-//     ],
-//     [
-//         "r4",
-//         {
-//             "testTitle": "test 2",
-//             "maxRetries": 1,
-//             "retriesInfo": [
-//                 {
-//                     "currentRetry": 0,
-//                     "testStartTime": 1766074933989,
-//                     "resultsGraph": new Map([
-//                         [
-//                             "ch-https://automationintesting.online-482-cmd-806",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-482-cmd-806",
-//                                 "name": "visit",
-//                                 "args": [
-//                                     "https://automationintesting.online/"
-//                                 ],
-//                                 "type": "parent",
-//                                 "runnableType": "before each",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766074934099,
-//                                 "enqueuedTimePerformance": 110.09999996423721,
-//                                 "startTime": 1766074934100,
-//                                 "startTimePerformance": 110.30000001192093,
-//                                 "endTime": 1766074934957,
-//                                 "endTimePerformance": 967.3999999761581,
-//                                 "duration": 857,
-//                                 "durationPerformance": 857.0999999642372,
-//                                 "retries": 0,
-//                                 "queueInsertionOrder": 0,
-//                                 "executionOrder": 0,
-//                                 "nextCommandId": "ch-https://automationintesting.online-483-cmd-807",
-//                                 "prevCommandId": null,
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-483-cmd-807"
-//                             }
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-500-cmd-836",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-500-cmd-836",
-//                                 "name": "get",
-//                                 "args": [
-//                                     "#contact input[data-testid=\"ContactName\"]"
-//                                 ],
-//                                 "query": true,
-//                                 "runnableType": "test",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 829.6000000238419,
-//                                 "startTime": 1766075398097,
-//                                 "startTimePerformance": 831,
-//                                 "endTime": 1766075398668,
-//                                 "endTimePerformance": 1402.3999999761581,
-//                                 "duration": 571,
-//                                 "durationPerformance": 571.3999999761581,
-//                                 "retries": 25,
-//                                 "queueInsertionOrder": 1,
-//                                 "executionOrder": 10,
-//                                 "nextCommandId": "ch-https://automationintesting.online-500-cmd-837",
-//                                 "prevCommandId": "ch-https://automationintesting.online-499-cmd-835",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-500-cmd-837"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-500-cmd-837",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-500-cmd-837",
-//                                 "name": "type",
-//                                 "args": [
-//                                     "paul mcCartney",
-//                                     {
-//                                         "delay": 200
-//                                     }
-//                                 ],
-//                                 "type": "child",
-//                                 "runnableType": "test",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830,
-//                                 "startTime": 1766075398669,
-//                                 "startTimePerformance": 1402.3999999761581,
-//                                 "endTime": 1766075401816,
-//                                 "endTimePerformance": 4549.5,
-//                                 "duration": 3147,
-//                                 "durationPerformance": 3147.100000023842,
-//                                 "retries": 2,
-//                                 "queueInsertionOrder": 2,
-//                                 "executionOrder": 10,
-//                                 "nextCommandId": "ch-https://automationintesting.online-501-cmd-838",
-//                                 "prevCommandId": "ch-https://automationintesting.online-500-cmd-836",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-501-cmd-838"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-507-cmd-849",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-507-cmd-849",
-//                                 "name": "visit",
-//                                 "args": [
-//                                     "https://automationintesting.online/"
-//                                 ],
-//                                 "type": "parent",
-//                                 "runnableType": "before each",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075406005,
-//                                 "enqueuedTimePerformance": 60,
-//                                 "startTime": 1766075406005,
-//                                 "startTimePerformance": 60.30000001192093,
-//                                 "endTime": 1766075406776,
-//                                 "endTimePerformance": 831.3999999761581,
-//                                 "duration": 771,
-//                                 "durationPerformance": 771.0999999642372,
-//                                 "retries": 0,
-//                                 "queueInsertionOrder": 0,
-//                                 "executionOrder": 0,
-//                                 "nextCommandId": "ch-https://automationintesting.online-508-cmd-850",
-//                                 "prevCommandId": null,
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-508-cmd-850"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-501-cmd-839",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-501-cmd-839",
-//                                 "name": "should",
-//                                 "args": [
-//                                     "have.value",
-//                                     "paul mcCartney"
-//                                 ],
-//                                 "type": "assertion",
-//                                 "runnableType": "test",
-//                                 "state": "failed",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830.1999999880791,
-//                                 "queueInsertionOrder": 4,
-//                                 "nextCommandId": "ch-https://automationintesting.online-501-cmd-840",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-838",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-501-cmd-840"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-501-cmd-840",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-501-cmd-840",
-//                                 "name": "and",
-//                                 "args": [
-//                                     "have.class",
-//                                     "form-control"
-//                                 ],
-//                                 "type": "assertion",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830.3000000119209,
-//                                 "queueInsertionOrder": 5,
-//                                 "nextCommandId": "ch-https://automationintesting.online-501-cmd-841",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-839",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-501-cmd-841"
-//                             }
-
-//                         ],
-//                         [
-
-//                             "ch-https://automationintesting.online-501-cmd-841",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-501-cmd-841",
-//                                 "name": "and",
-//                                 "args": [
-//                                     "have.css",
-//                                     "color",
-//                                     "red"
-//                                 ],
-//                                 "type": "assertion",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398096,
-//                                 "enqueuedTimePerformance": 830.3000000119209,
-//                                 "queueInsertionOrder": 6,
-//                                 "nextCommandId": "ch-https://automationintesting.online-502-cmd-842",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-840",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-502-cmd-842"
-//                             }
-
-//                         ],
-//                         [
-
-//                             "ch-https://automationintesting.online-502-cmd-842",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-502-cmd-842",
-//                                 "name": "wait",
-//                                 "args": [
-//                                     500
-//                                 ],
-//                                 "type": "dual",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.5,
-//                                 "queueInsertionOrder": 7,
-//                                 "nextCommandId": "ch-https://automationintesting.online-503-cmd-843",
-//                                 "prevCommandId": "ch-https://automationintesting.online-501-cmd-841",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-503-cmd-843"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-503-cmd-843",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-503-cmd-843",
-//                                 "name": "get",
-//                                 "args": [
-//                                     "#contact button"
-//                                 ],
-//                                 "query": true,
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.6000000238419,
-//                                 "queueInsertionOrder": 8,
-//                                 "nextCommandId": "ch-https://automationintesting.online-503-cmd-844",
-//                                 "prevCommandId": "ch-https://automationintesting.online-502-cmd-842",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-503-cmd-844"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-503-cmd-844",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-503-cmd-844",
-//                                 "name": "contains",
-//                                 "args": [
-//                                     "Submit"
-//                                 ],
-//                                 "query": true,
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.6999999880791,
-//                                 "queueInsertionOrder": 9,
-//                                 "nextCommandId": "ch-https://automationintesting.online-503-cmd-845",
-//                                 "prevCommandId": "ch-https://automationintesting.online-503-cmd-843",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-503-cmd-845"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-503-cmd-845",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-503-cmd-845",
-//                                 "name": "click",
-//                                 "args": [],
-//                                 "type": "child",
-//                                 "runnableType": "test",
-//                                 "state": "queued",
-//                                 "enqueuedTime": 1766075398097,
-//                                 "enqueuedTimePerformance": 830.8999999761581,
-//                                 "queueInsertionOrder": 10,
-//                                 "nextCommandId": "ch-https://automationintesting.online-504-cmd-846",
-//                                 "prevCommandId": "ch-https://automationintesting.online-503-cmd-844",
-//                                 "nextQueuedCommandId": "ch-https://automationintesting.online-504-cmd-846"
-//                             }
-
-//                         ],
-//                         [
-//                             "ch-https://automationintesting.online-504-cmd-846",
-//                             {
-//                                 "id": "ch-https://automationintesting.online-504-cmd-846",
-//                                 "name": "log",
-//                                 "args": [
-//                                     "--- one last command in beforeEach"
-//                                 ],
-//                                 "type": "parent",
-//                                 "runnableType": "after each",
-//                                 "state": "passed",
-//                                 "enqueuedTime": 1766075405825,
-//                                 "enqueuedTimePerformance": 8559.199999988079,
-//                                 "startTime": 1766075405826,
-//                                 "startTimePerformance": 8559.5,
-//                                 "endTime": 1766075405828,
-//                                 "endTimePerformance": 8561.5,
-//                                 "duration": 2,
-//                                 "durationPerformance": 2,
-//                                 "retries": 0,
-//                                 "queueInsertionOrder": 11,
-//                                 "executionOrder": 11,
-//                                 "prevCommandId": "ch-https://automationintesting.online-503-cmd-845",
-//                                 "nextQueuedCommandId": null
-//                             }
-
-//                         ]
-
-//                     ])
-//                 },
-//                 {
-//                     "currentRetry": 1,
-//                     "testStartTime": 1766074943254,
-//                     "resultsGraph": {}
-//                 }
-//             ]
-//         }
-//     ]
-// ])
-
-
