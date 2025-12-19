@@ -1,10 +1,13 @@
 /// <reference types="cypress" />
 
 export const specAudit = new Map() // Map() structure with the audit of all tests in the spec file (including retries)
+
 // let currentTestId = null // Used by command events to identify the test
 // let currentRetry = null // Used to handle retries (event 'test:before:run')
 let currentTestIdAndRetry = null // Used to handle retries (event 'test:before:run')
 let currentCommandId = null // Used to handle retries (event 'command:retry')
+
+let executionOrder = 1 // Used to handle the execution order of the commands
 
 if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTestAudit') === 'true') {
 
@@ -39,7 +42,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
                 commandId: commandId, // For convenience
                 enqueuedTime: new Date() - 0,
                 enqueuedTimePerformance: performance.now() - testAudit.testStartTimePerformance,
-                queueInsertionOrder: testAudit.commandsEnqueued.size,
+                queueInsertionOrder: testAudit.commandsEnqueued.size + 1,
                 runnableType: runnable.type === 'hook' ? runnable.hookName : runnable.type,
             },
         })
@@ -64,7 +67,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         enqueuedCommandData.runInfo.retryTime = null
         enqueuedCommandData.runInfo.retryTimePerformance = null
         enqueuedCommandData.runInfo.retries = 0
-        enqueuedCommandData.runInfo.executionOrder = testAudit.commandsEnqueued.size - 1
+        enqueuedCommandData.runInfo.executionOrder = executionOrder++
 
         currentCommandId = commandId // Used to handle retries (event 'command:retry')
     })

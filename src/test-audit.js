@@ -20,27 +20,125 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? 1500 // Default 1.5 seconds
 
     // ----------------------------------------------------------------------------------
+    // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
+    // ----------------------------------------------------------------------------------
+    beforeEach(() => {
+
+    })
+
+
+    // ----------------------------------------------------------------------------------
+    // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
+    // ----------------------------------------------------------------------------------
+    afterEach(() => {
+
+        // Only run the test audit is configured as such
+
+
+        const test = cy.state().test
+        const currentTestId = test.id
+        const currentRetry = test._currentRetry
+
+        // Get the test audit results
+        const { resultsGraph, testStartTime } = getTestAuditResults(test)
+
+        // console.log('#################################### test')
+        // console.log(Cypress.spec)
+        // console.log(cy.state())
+        // console.log(test)
+        // console.log('####################################')
+
+        // console.log('#################################### resultsGraph')
+        // console.log(resultsGraph)
+        // console.log('####################################')
+
+        if (!resultsGraph) return
+
+        // Display the test ausig results in the browser condole/terminal console
+        const commands = Array.from(resultsGraph.values());
+        const testData = { test, testSlownessThreshold, testStartTime }
+        const commandsData = { commands, commandSlownessThreshold }
+
+
+        if (Cypress.env('flakyTestAuditConsoleType') === 'list') {
+            // Display list of Audit Results in the browser console
+            Utils.displayTestAuditAsListBrowserConsole(testData, commandsData)
+            // Display list of Audit Results in the terminal console
+            Utils.displayTestAuditAsListTerminalConsole(testData, commandsData)
+        } else {
+            // By default shows as table
+
+            // Display table of Audit Results in the browser console
+            Utils.displayTestAuditAsTableBrowserConsole(testData, commandsData)
+            // Display table of Audit Results in the terminal console
+            Utils.displayTestAuditAsTableTerminalConsole(testData, commandsData)
+        }
+
+
+        // Info for a test definition
+        if (!testAuditResults.has(currentTestId)) {
+            // Ensure nested map structure: testAuditResults.get(currentTestId) is a Map of retries->result
+            testAuditResults.set(currentTestId, {
+                testTitle: test.title, 
+                maxRetries: test._retries, 
+                retriesInfo: [] 
+            });
+        }
+
+        // Info specific for each test retry
+        const retriesInfo = { 
+            currentRetry, 
+            testStartTime, 
+            resultsGraph
+        }
+        testAuditResults.get(currentTestId).retriesInfo[currentRetry] = retriesInfo;
+
+    })
+
+    after(() => {
+        if (Cypress.env('createFlakyTestAuditReport') === true || Cypress.env('createFlakyTestAuditReport') === 'true') {
+            // If the report is configured to be created, create it
+            // sending the spec and the testAuditResults map
+            Report.createSuiteAuditHtmlReport(Cypress.spec, testAuditResults)
+        }
+    })
+
+    // ----------------------------------------------------------------------------------
     // FUNCTIONS
     // ----------------------------------------------------------------------------------
 
-    const findNextCommandEnqueuedData = (currentTestIdAndRetry, currentCommandId) => {
-        const testAudit = specAudit.get(currentTestIdAndRetry)  // Is the Map
-        let found = false;
+    const getTestAuditResults = (test) => {
 
-        // testAudit is an object with a property 'commandsEnqueued' that is a Map
-        const commandsEnqueued = testAudit.commandsEnqueued;
-        for (const [k, v] of commandsEnqueued) {
-            if (found) {
-                return k // This is the command Id for the next entry in the queue after currentCommandId
-            }
-            if (k === currentCommandId) {
-                found = true;
-            }
-        }
+        if (!test) return null
 
-        return null; // No next entry
+        const currentTestIdAndRetry = `${test.id}-${test._currentRetry}`
+
+        const testAudit = specAudit.get(currentTestIdAndRetry)
+        const testStartTime = testAudit.testStartTime
+        const commandsEnqueuedIterator = testAudit.commandsEnqueued.values()
+
+        // Get the first command enqueued data
+        const commandEnqueuedData = commandsEnqueuedIterator.next().value;
+
+        // console.log('*************************************************')
+        // console.log(commandEnqueuedData)
+        // console.log('*************************************************')
+
+        // Process all the commands of the test and return a directed graph with the commands as nodes
+        let resultsGraph = processCommand({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId: null }, new Map())
+
+        resultsGraph = setPrevQueuedCommandAndNestedLevel(resultsGraph, 0)
+
+        // resultsGraph = createEnqueuedEdges(resultsGraph)
+
+        return { resultsGraph, testStartTime }
+
     }
 
+    // const createEnqueuedEdges = (resultsGraph) => {
+
+    //     return resultsGraph
+    // }
 
     const processCommand = ({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId, idAssertionCommandFailed }, resultsGraph = new Map()) => {
         // Return early if command enqueued data is missing or the command is missing
@@ -142,32 +240,32 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             prevQueuedCommandId: undefined,
             nestedLevel: undefined,
         }
+        // console.log('===============================================')
+        // console.log(runInfo)
+        // console.log(commandInfo)
+        // console.log('===============================================')
 
         resultsGraph.set(id, commandInfo)
 
         return processCommand({ currentTestIdAndRetry, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id, idAssertionCommandFailed: idAssertionCommandThatWillFail }, resultsGraph)
     }
 
-    const getTestAuditResults = (test) => {
+    const findNextCommandEnqueuedData = (currentTestIdAndRetry, currentCommandId) => {
+        const testAudit = specAudit.get(currentTestIdAndRetry)  // Is the Map
+        let found = false;
 
-        if (!test) return null
+        // testAudit is an object with a property 'commandsEnqueued' that is a Map
+        const commandsEnqueued = testAudit.commandsEnqueued;
+        for (const [k, v] of commandsEnqueued) {
+            if (found) {
+                return k // This is the command Id for the next entry in the queue after currentCommandId
+            }
+            if (k === currentCommandId) {
+                found = true;
+            }
+        }
 
-        const currentTestIdAndRetry = `${test.id}-${test._currentRetry}`
-
-        const testAudit = specAudit.get(currentTestIdAndRetry)
-        const testStartTime = testAudit.testStartTime
-        const commandsEnqueuedIterator = testAudit.commandsEnqueued.values()
-
-        // Get the first command enqueued data
-        const commandEnqueuedData = commandsEnqueuedIterator.next().value;
-
-        // Process all the commands of the test and return a directed graph with the commands as nodes
-        let resultsGraph = processCommand({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId: null }, new Map())
-
-        resultsGraph = setPrevQueuedCommandAndNestedLevel(resultsGraph, 0)
-
-        return { resultsGraph, testStartTime }
-
+        return null; // No next entry
     }
 
     const setPrevQueuedCommandAndNestedLevel = (resultsGraph, nestedLevel = 0) => {
@@ -264,88 +362,4 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         return resultsGraph
     }
-
-    // ----------------------------------------------------------------------------------
-    // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
-    // ----------------------------------------------------------------------------------
-    beforeEach(() => {
-
-    })
-
-
-    // ----------------------------------------------------------------------------------
-    // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
-    // ----------------------------------------------------------------------------------
-    afterEach(() => {
-
-        // Only run the test audit is configured as such
-
-
-        const test = cy.state().test
-        const currentTestId = test.id
-        const currentRetry = test._currentRetry
-
-        // Get the test audit results
-        const { resultsGraph, testStartTime } = getTestAuditResults(test)
-
-        // console.log('#################################### test')
-        // console.log(Cypress.spec)
-        // console.log(cy.state())
-        // console.log(test)
-        // console.log('####################################')
-
-        // console.log('#################################### resultsGraph')
-        // console.log(resultsGraph)
-        // console.log('####################################')
-
-        if (!resultsGraph) return
-
-        // Display the test ausig results in the browser condole/terminal console
-        const commands = Array.from(resultsGraph.values());
-        const testData = { test, testSlownessThreshold, testStartTime }
-        const commandsData = { commands, commandSlownessThreshold }
-
-
-        if (Cypress.env('flakyTestAuditConsoleType') === 'list') {
-            // Display list of Audit Results in the browser console
-            Utils.displayTestAuditAsListBrowserConsole(testData, commandsData)
-            // Display list of Audit Results in the terminal console
-            Utils.displayTestAuditAsListTerminalConsole(testData, commandsData)
-        } else {
-            // By default shows as table
-
-            // Display table of Audit Results in the browser console
-            Utils.displayTestAuditAsTableBrowserConsole(testData, commandsData)
-            // Display table of Audit Results in the terminal console
-            Utils.displayTestAuditAsTableTerminalConsole(testData, commandsData)
-        }
-
-
-        // Info for a test definition
-        if (!testAuditResults.has(currentTestId)) {
-            // Ensure nested map structure: testAuditResults.get(currentTestId) is a Map of retries->result
-            testAuditResults.set(currentTestId, {
-                testTitle: test.title, 
-                maxRetries: test._retries, 
-                retriesInfo: [] 
-            });
-        }
-
-        // Info specific for each test retry
-        const retriesInfo = { 
-            currentRetry, 
-            testStartTime, 
-            resultsGraph
-        }
-        testAuditResults.get(currentTestId).retriesInfo[currentRetry] = retriesInfo;
-
-    })
-
-    after(() => {
-        if (Cypress.env('createFlakyTestAuditReport') === true || Cypress.env('createFlakyTestAuditReport') === 'true') {
-            // If the report is configured to be created, create it
-            // sending the spec and the testAuditResults map
-            Report.createSuiteAuditHtmlReport(Cypress.spec, testAuditResults)
-        }
-    })
 }
