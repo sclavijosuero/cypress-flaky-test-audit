@@ -8,6 +8,11 @@ import Utils from './utils'
 // CONSTANTS
 // **********************************************************************************
 
+const colorByState = {
+    passed: '#2e7d32',
+    failed: '#c62828',
+    pending: '#f9a825'
+};
 
 // **********************************************************************************
 // PUBLIC FUNCTIONS
@@ -73,42 +78,65 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             queueIndexById[id] = idx;
         });
 
-        const startCandidates = queueOrderedIds.filter(id => !commands[id].prevCommandId);
-        const depthById = computeExecutionDepths(
-            queueOrderedIds,
-            startCandidates.length ? startCandidates : [queueOrderedIds[0]],
-            commands
-        );
+        const orderIndexById = {};
+        (() => {
+            const visited = new Set();
+            let orderCounter = 0;
+            const walkChain = (startId) => {
+                let currentId = startId;
+                while (currentId && !visited.has(currentId) && commands[currentId]) {
+                    visited.add(currentId);
+                    orderIndexById[currentId] = orderCounter++;
+                    const nextId = commands[currentId]?.nextCommandId;
+                    if (!nextId || visited.has(nextId)) break;
+                    currentId = nextId;
+                }
+            };
+
+            const headCandidates = queueOrderedIds.filter(id => !commands[id]?.prevCommandId);
+            const traversalOrder = headCandidates.length ? headCandidates : [queueOrderedIds[0]];
+            traversalOrder.forEach(walkChain);
+            queueOrderedIds.forEach(id => {
+                if (!visited.has(id)) walkChain(id);
+            });
+        })();
 
         const durations = queueOrderedIds
             .map(id => getDuration(commands[id]))
             .filter(value => Number.isFinite(value) && value > 0);
 
         const maxDuration = durations.length ? Math.max(...durations) : 0;
+
         const minBoxWidth = 70;
         const maxBoxWidth = 400;
-        const horizontalSpacing = 160;
         const verticalSpacing = 95;
         const nodeBaseY = 40; // keep queue on a visible baseline
+        const identNestedLevel = 230;
+
+        const getNestedLevel = (cmd) => {
+            if (!cmd) return 0;
+            if (typeof cmd.nestedLevel === 'number') {
+                return Number.isFinite(cmd.nestedLevel) ? cmd.nestedLevel : 0;
+            }
+            const parsed = Number(cmd.nestedLevel);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
 
         const tooltipByNode = {};
         const dotLabels = {};
 
         const nodes = queueOrderedIds.map(id => {
             const cmd = commands[id];
+            const queueIndex = queueIndexById[id];
             const duration = getDuration(cmd);
             const hasDuration = duration > 0;
+            const nestedLevel = getNestedLevel(cmd);
             const labelParts = [`${cmd.name+'()' || 'command'}`];
             // const argsPreview = formatArgs(cmd.args);
             const argsPreview = '()'
             // if (argsPreview) labelParts.push(argsPreview);
             if (hasDuration) labelParts.push(`${Math.round(duration)} ms`);
 
-            const colorByState = {
-                passed: '#2e7d32',
-                failed: '#c62828',
-                pending: '#f9a825'
-            };
             const nodeColor = colorByState[cmd.state] || '#546e7a';
 
             const width = hasDuration
@@ -118,13 +146,14 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 )
                 : undefined;
 
-            const depth = depthById[id] || 0;
-            const nodeY = nodeBaseY - depth * verticalSpacing;
+            const nodeX = nestedLevel * identNestedLevel;
+            const orderIndex = orderIndexById[id] ?? queueIndex;
+            const nodeY = nodeBaseY + orderIndex * verticalSpacing;
             const tooltipHtml = buildTooltip(cmd, duration);
             const node = {
                 id,
                 label: labelParts.join('\n'),
-                x: queueIndexById[id] * horizontalSpacing,
+                x: nodeX,
                 y: nodeY,
                 fixed: true,
                 color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
@@ -154,6 +183,9 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         queueOrderedIds.forEach(id => {
             const cmd = commands[id];
             if (cmd.nextCommandId && commands[cmd.nextCommandId]) {
+                const fromLevel = getNestedLevel(cmd);
+                const toLevel = getNestedLevel(commands[cmd.nextCommandId]);
+                const roundness = toLevel > fromLevel ? 0.3 : toLevel < fromLevel ? 0.05 : 0.15;
                 edges.push({
                     from: id,
                     to: cmd.nextCommandId,
@@ -162,7 +194,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                     width: 2,
                     smooth: {
                         type: 'cubicBezier',
-                        roundness: depthById[cmd.nextCommandId] > depthById[id] ? 0.3 : 0.05
+                        roundness
                     }
                 });
             }
@@ -195,18 +227,14 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                     clickToUse: true,
                     physics: false,
                     layout: {
-                      improvedLayout: true,
-                      hierarchical: { 
-                        direction: "UD",
-                        sortMethod: "directed",
-                        levelSeparation: 80,
-                        nodeSpacing: 80,
-                        treeSpacing: 150
-                      } 
+                        improvedLayout: false,
+                        hierarchical: false
                     },
                     interaction: {
                         dragNodes: false,
-                        hover: false
+                        hover: false,
+                        dragView: true,
+                        zoomView: true
                     },
                     edges: {
                         smooth: true
@@ -307,50 +335,6 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 `<div><strong>Duration:</strong> ${esc(duration > 0 ? Math.round(duration) + ' ms' : 'n/a')}</div>`
             ];
             return info.filter(Boolean).join('');
-        }
-
-        function computeExecutionDepths(orderIds, startIds, commandsMap) {
-            const depthMap = {};
-            const seen = new Set();
-
-            const traverse = (startId) => {
-                let currentId = startId;
-                let currentDepth = depthMap[startId] ?? 0;
-                const resumeStack = [];
-
-                while (currentId && commandsMap[currentId] && !seen.has(currentId)) {
-                    depthMap[currentId] = depthMap[currentId] ?? currentDepth;
-                    seen.add(currentId);
-
-                    const current = commandsMap[currentId];
-                    const actualNext = current.nextCommandId;
-                    if (!actualNext || !commandsMap[actualNext]) break;
-
-                    const queueNext = current.nextQueuedCommandId;
-                    if (queueNext && actualNext !== queueNext) {
-                        resumeStack.push({ resumeId: queueNext, depth: currentDepth });
-                        currentDepth += 1;
-                    } else {
-                        while (resumeStack.length && actualNext === resumeStack[resumeStack.length - 1].resumeId) {
-                            currentDepth = resumeStack.pop().depth;
-                        }
-                    }
-
-                    if (seen.has(actualNext)) break;
-                    depthMap[actualNext] = depthMap[actualNext] ?? currentDepth;
-                    currentId = actualNext;
-                }
-            };
-
-            startIds.forEach(traverse);
-            orderIds.forEach(id => {
-                if (!seen.has(id)) traverse(id);
-            });
-            orderIds.forEach(id => {
-                if (depthMap[id] === undefined) depthMap[id] = 0;
-            });
-
-            return depthMap;
         }
     }
 
