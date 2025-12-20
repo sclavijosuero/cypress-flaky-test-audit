@@ -43,11 +43,12 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // Get the test audit results
         const { resultsGraph, testStartTime } = getTestAuditResults(test)
 
-        // console.log('#################################### test')
-        // console.log(Cypress.spec)
-        // console.log(cy.state())
-        // console.log(test)
-        // console.log('####################################')
+        console.log('#################################### test')
+        console.log(Cypress.spec)
+        console.log(cy.state())
+        console.log(test)
+        console.log(test.state)
+        console.log('####################################')
 
         // console.log('#################################### resultsGraph')
         // console.log(resultsGraph)
@@ -75,6 +76,13 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             Utils.displayTestAuditAsTableTerminalConsole(testData, commandsData)
         }
 
+        // Info specific for each test retry
+        const retriesInfo = { 
+            currentRetry, 
+            retryStatus,
+            testStartTime, 
+            resultsGraph
+        }
 
         // Info for a test definition
         if (!testAuditResults.has(currentTestId)) {
@@ -87,14 +95,9 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             });
         }
 
-        // Info specific for each test retry
-        const retriesInfo = { 
-            currentRetry, 
-            retryStatus,
-            testStartTime, 
-            resultsGraph
-        }
-        testAuditResults.get(currentTestId).retriesInfo[currentRetry] = retriesInfo;
+        let testInfo = testAuditResults.get(currentTestId);
+        testInfo.retriesInfo[currentRetry] = retriesInfo;
+        testInfo.testStatus = test.state;
 
     })
 

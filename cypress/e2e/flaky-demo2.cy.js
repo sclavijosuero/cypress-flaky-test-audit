@@ -216,16 +216,23 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
   })
 
-  it('test 2.2', () => {  // ❌ TEST FAIL
+  it.only('test 2.2', () => {  // ❌ TEST FAIL
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
     cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 }) // ✔️ C.PASS
 
     cy.then(() => {
-      cy.get('#contact button')
-        .contains('Submityyyyy')  // C.FAIL
-        .click()
+      if (Cypress.currentRetry == 0) {
+        cy.get('#contact button')
+          .contains('Submityyyyy')  // C.FAIL
+          .click()
+      }
+      else {
+        cy.get('#contact button')
+          .contains('Submit')
+          .click()
+      }      
     })
 
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
@@ -325,7 +332,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   // .only
-  it.only('test 7.1.1', () => {  // TEST FAIL
+  it('test 7.1.1', () => {  // TEST FAIL
     const timeToWait = 200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS

@@ -127,11 +127,28 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 const retryLabel = testData.maxRetries > 0
                     ? `Retry ${retry.currentRetry} of ${testData.maxRetries}`
                     : 'Execution';
+                const retryStatus = typeof retry.retryStatus === 'string' ? retry.retryStatus.toLowerCase() : '';
+                const statusIcon = retryStatus === 'passed' ? '✔' : retryStatus === 'failed' ? '✖' : '➜';
+                const chipClass = retryStatus === 'passed'
+                    ? 'retry-status-chip retry-status-chip--passed'
+                    : retryStatus === 'failed'
+                        ? 'retry-status-chip retry-status-chip--failed'
+                        : 'retry-status-chip retry-status-chip--unknown';
+                const cardClass = retryStatus === 'passed'
+                    ? 'retry-card retry-card--passed'
+                    : retryStatus === 'failed'
+                        ? 'retry-card retry-card--failed'
+                        : 'retry-card retry-card--unknown';
                 return `
-                    <div class="retry-card">
+                    <div class="${cardClass}">
                         <div class="retry-meta">
-                            <div><b>${retryLabel}</b></div>
-                            <div><b>Start time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
+                            <div class="retry-meta__line">
+                                <div class="${chipClass}" aria-label="${retryStatus || 'unknown'}">${statusIcon}</div>
+                                <div class="retry-label"><b>${retryLabel}</b></div>
+                            </div>
+                            <div class="retry-meta__line retry-meta__line--time">
+                                <div><b>Start time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
+                            </div>
                             <div class="commands-graph-label">Commands Graph</div>
                         </div>
                         ${generateGraphHtml(retry.resultsGraph, containerId)}
@@ -262,7 +279,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         }
         .test-card__header h2 {
             margin: 4px 0 0;
-            font-size: 24px;
+            font-size: 26px;
             color: var(--text-primary);
         }
         .test-status {
@@ -315,13 +332,55 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             flex-direction: column;
             gap: 12px;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+            border-left: 6px solid transparent;
+        }
+        .retry-card--passed {
+            border-left-color: #22c55e;
+        }
+        .retry-card--failed {
+            border-left-color: #ef4444;
+        }
+        .retry-card--unknown {
+            border-left-color: #94a3b8;
         }
         .retry-meta {
-            font-size: 13px;
+            font-size: 16px;
             color: var(--text-muted);
             display: flex;
             flex-direction: column;
             gap: 6px;
+        }
+        .retry-meta__line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .retry-status-chip {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .retry-status-chip--passed {
+            background: rgba(34,197,94,0.15);
+            color: #15803d;
+        }
+        .retry-status-chip--failed {
+            background: rgba(239,68,68,0.18);
+            color: #b91c1c;
+        }
+        .retry-status-chip--unknown {
+            background: rgba(148,163,184,0.25);
+            color: #334155;
+        }
+        .retry-label {
+            font-size: 16px;
+            color: var(--text-primary);
         }
         .retry-meta .commands-graph-label {
             margin-top: 6px;
