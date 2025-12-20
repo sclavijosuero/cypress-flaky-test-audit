@@ -7,13 +7,15 @@ export const specAudit = new Map() // Map() structure with the audit of all test
 let currentTestIdAndRetry = null // Used to handle retries (event 'test:before:run')
 let currentCommandId = null // Used to handle retries (event 'command:retry')
 
-let executionOrder = 1 // Used to handle the execution order of the commands
+let executionOrder
 
 if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTestAudit') === 'true') {
 
     Cypress.on('test:before:run', (test) => {
         // console.log('................. test:before:run ')
         // console.log(test)
+        
+        executionOrder = 1 // Used to handle the execution order of the commands
 
         const currentTestId = test.id
         const currentRetry = test.currentRetry

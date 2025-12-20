@@ -35,9 +35,9 @@ const emphasizeColor = (hexColor, factor = 0.35) => {
 // **********************************************************************************
 
 const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
-    console.log('------------------------------------------------------------- createFlakyTestAuditReport')
-    console.log(spec)
-    console.log(testAuditResults)
+    // console.log('------------------------------------------------------------- createFlakyTestAuditReport')
+    // console.log(spec)
+    // console.log(testAuditResults)
 
     const htmlReport = createSuiteAuditHtml(spec, testAuditResults)
 
@@ -363,7 +363,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             max-width: 360px;
             padding: 10px 12px;
             border-radius: 12px;
-            background: rgba(15,23,42,0.92);
+            background: rgba(15,23,42,0.98);
             color: #fff;
             font-size: 12px;
             line-height: 1.5;
@@ -468,10 +468,10 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
 
     const maxDuration = durations.length ? Math.max(...durations) : 0;
 
-    const minBoxWidth = 90;
-    const maxBoxWidth = 220;
-    const minBoxHeight = 50;
-    const maxBoxHeight = 350;
+    const minBoxWidth = 140;
+    const maxBoxWidth = 280;
+    // const minBoxHeight = 50;
+    // const maxBoxHeight = 350;
     const verticalSpacing = 80;
     const nodeBaseY = 40; // keep queue on a visible baseline
     const identNestedLevel = 230;
@@ -493,6 +493,8 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         const queueIndex = queueIndexById[id];
         const duration = getDuration(cmd);
         const hasDuration = duration > 0;
+        const isAssertion = cmd?.type === 'assertion';
+        const shouldRenderAsBox = hasDuration || !isAssertion;
         const nestedLevel = getNestedLevel(cmd);
         const labelParts = [`${cmd.name + '()' || 'command'}`];
         // const argsPreview = formatArgs(cmd.args);
@@ -513,34 +515,35 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 minBoxWidth,
                 maxDuration ? (duration / maxDuration) * maxBoxWidth : minBoxWidth
             )
-            : undefined;
+            : minBoxWidth;
 
         const nodeX = nestedLevel * identNestedLevel;
         const orderIndex = orderIndexById[id] ?? queueIndex;
         const nodeY = nodeBaseY + orderIndex * verticalSpacing;
         const tooltipHtml = buildTooltip(cmd, duration);
-            const nodeFontColor = isNonTestRunnable ? '#0b1220' : '#fff';
-            const node = {
+        const nodeFontColor = isNonTestRunnable ? '#0b1220' : '#fff';
+        const nodeFontSize = shouldRenderAsBox ? 18 : 11;
+        const node = {
             id,
             label: labelParts.join('\n'),
             x: nodeX,
             y: nodeY,
             fixed: true,
-                color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
-                font: { face: 'monospace', align: 'left', multi: 'md', color: nodeFontColor },
+            color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
+            font: { face: 'monospace', align: 'left', multi: 'md', color: nodeFontColor, size: nodeFontSize },
             tooltip: tooltipHtml
         };
         tooltipByNode[id] = tooltipHtml;
 
-        if (hasDuration) {
+        if (shouldRenderAsBox) {
             node.shape = 'box';
             node.widthConstraint = { minimum: width, maximum: width };
             node.font.align = 'center';
         } else {
             node.shape = 'dot';
-            node.size = 10;
+            node.size = 14;
             node.label = '';
-                node.font = { face: 'monospace', color: '#263238', align: 'left' };
+            node.font = { face: 'monospace', color: '#263238', align: 'left' };
             dotLabels[id] = labelParts.join(' ');
         }
 
