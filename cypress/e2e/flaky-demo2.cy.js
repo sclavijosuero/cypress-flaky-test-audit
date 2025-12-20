@@ -16,10 +16,10 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   afterEach(() => {
-    cy.wrap(20)
-      .should('be.eq', 20)
-    cy.wrap(10)
-      .should('be.eq', 30)
+    // cy.wrap(20)
+    //   .should('be.eq', 20)
+    // cy.wrap(10)
+    //   .should('be.eq', 30)
     cy.log('1- afterEach')
   })
   
@@ -201,7 +201,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it('test 2.1', () => {  // ⏳ TEST PASS SLOW
+  it.only('test 2.1', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
@@ -209,7 +209,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
     cy.then(() => {
       cy.get('#contact button')
-        .contains('Submity')
+        .contains('Submit')
         .click()
     })
 
@@ -319,6 +319,9 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       })
 
     cy.wait(timeToWait)
+  })
+
+  it.skip('test skipped', () => {  // TEST FAIL
   })
 
   // .only

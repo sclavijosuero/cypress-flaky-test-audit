@@ -38,6 +38,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const test = cy.state().test
         const currentTestId = test.id
         const currentRetry = test._currentRetry
+        const retryStatus = test.state
 
         // Get the test audit results
         const { resultsGraph, testStartTime } = getTestAuditResults(test)
@@ -80,7 +81,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             // Ensure nested map structure: testAuditResults.get(currentTestId) is a Map of retries->result
             testAuditResults.set(currentTestId, {
                 testTitle: test.title, 
-                maxRetries: test._retries, 
+                maxRetries: test._retries,
+                testStatus: test.state,  // Keep the status of the last retry
                 retriesInfo: [] 
             });
         }
@@ -88,6 +90,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // Info specific for each test retry
         const retriesInfo = { 
             currentRetry, 
+            retryStatus,
             testStartTime, 
             resultsGraph
         }

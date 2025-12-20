@@ -35,9 +35,9 @@ const emphasizeColor = (hexColor, factor = 0.35) => {
 // **********************************************************************************
 
 const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
-    // console.log('------------------------------------------------------------- createFlakyTestAuditReport')
-    // console.log(spec)
-    // console.log(testAuditResults)
+    console.log('------------------------------------------------------------- createFlakyTestAuditReport')
+    console.log(spec)
+    console.log(testAuditResults)
 
     const htmlReport = createSuiteAuditHtml(spec, testAuditResults)
 
@@ -53,8 +53,25 @@ const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
 }
 
 
+const getTestStatusDisplay = (status) => {
+    const normalized = typeof status === 'string' ? status.toLowerCase() : '';
+    switch (normalized) {
+        case 'passed':
+            return { label: 'Passed', className: 'test-status--passed', flag: '✔' };
+        case 'failed':
+            return { label: 'Failed', className: 'test-status--failed', flag: '✖' };
+        case 'pending':
+        case 'skipped':
+            return { label: 'Skipped', className: 'test-status--skipped', flag: '➜' };
+        default:
+            return { label: 'Unknown', className: 'test-status--unknown', flag: '？' };
+    }
+};
+
 const createSuiteAuditHtml = (spec, testAuditResults) => {
     const generatedAt = new Date().toLocaleString();
+
+    const failedTestsCount = Array.from(testAuditResults.values()).filter(test => (test?.testStatus || '').toLowerCase() === 'failed').length;
 
     // Compose HTML for suite audit report
     let suiteInfoHtml = `
@@ -76,6 +93,10 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                     <span class="stat-label">Total Tests</span>
                     <span class="stat-value">${testAuditResults.size}</span>
                 </article>
+                <article class="stat-card stat-card--failed">
+                    <span class="stat-label">Failed Tests</span>
+                    <span class="stat-value">${failedTestsCount}</span>
+                </article>
             </div>
         </section>
     `;
@@ -84,6 +105,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
     // testAuditResults: Map of testId (string) => {testTitle, maxRetries, retriesInfo}
     let testIdx = 0;
     for (const [testId, testData] of testAuditResults.entries()) {
+        const statusDisplay = getTestStatusDisplay(testData.testStatus);
         let testHtml = `
         <section class="test-card">
             <header class="test-card__header">
@@ -91,11 +113,9 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                     <p class="eyebrow eyebrow--dark">Test</p>
                     <h2>${esc(testData.testTitle)}</h2>
                 </div>
-                <div class="test-meta">
-                    <div>
-                        <span class="meta-label">Max Retries</span>
-                        <span class="meta-value">${testData.maxRetries}</span>
-                    </div>
+                <div class="test-status ${statusDisplay.className}">
+                    <span class="status-flag" aria-hidden="true">${statusDisplay.flag}</span>
+                    <span class="status-label">${statusDisplay.label}</span>
                 </div>
             </header>
         `;
@@ -105,13 +125,14 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             const retryCards = testData.retriesInfo.map((retry, retryIdx) => {
                 const containerId = `graph_${testIdx}_${retryIdx}`;
                 const retryLabel = testData.maxRetries > 0
-                    ? `Retry #${retry.currentRetry}`
+                    ? `Retry ${retry.currentRetry} of ${testData.maxRetries}`
                     : 'Execution';
                 return `
                     <div class="retry-card">
                         <div class="retry-meta">
-                            <div><b>${retryLabel} Start Time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
-                            <div><b>Commands Graph:</b></div>
+                            <div><b>${retryLabel}</b></div>
+                            <div><b>Start time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
+                            <div class="commands-graph-label">Commands Graph</div>
                         </div>
                         ${generateGraphHtml(retry.resultsGraph, containerId)}
                     </div>
@@ -157,19 +178,19 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             color: #e2e8f0;
         }
         .page {
-            max-width: 1280px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 48px 32px 64px;
+            padding: 34px 32px 34px;
             display: flex;
             flex-direction: column;
             gap: 32px;
         }
         .suite-overview {
-            border-radius: 22px;
-            padding: 24px;
-            background: linear-gradient(135deg, rgba(59,130,246,0.9), rgba(14,165,233,0.78));
+            border-radius: 18px;
+            padding: 20px;
+            background: linear-gradient(140deg, rgba(59,130,246,0.92), rgba(14,165,233,0.75));
             color: #fff;
-            box-shadow: 0 28px 60px rgba(15,23,42,0.25);
+            box-shadow: 0 18px 40px rgba(15,23,42,0.22);
         }
         .suite-heading h1 {
             margin: 6px 0 4px;
@@ -186,12 +207,12 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             color: var(--text-muted);
         }
         .suite-stats {
-            margin-top: 18px;
+            margin-top: 14px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
         }
-        @media (max-width: 640px) {
+        @media (max-width: 790px) {
             .suite-stats {
                 grid-template-columns: 1fr;
             }
@@ -204,6 +225,11 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             display: flex;
             flex-direction: column;
             gap: 6px;
+        }
+        .stat-card--failed {
+            background: rgba(239,68,68,0.18);
+            border-color: rgba(239,68,68,0.95);
+            box-shadow: 0 10px 25px rgba(239,68,68,0.35), inset 0 0 0 1px rgba(239,68,68,0.4);
         }
         .stat-label {
             font-size: 12px;
@@ -239,22 +265,35 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             font-size: 24px;
             color: var(--text-primary);
         }
-        .test-meta {
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
-        .meta-label {
-            display: block;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: var(--text-muted);
-        }
-        .meta-value {
-            font-size: 16px;
+        .test-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 14px;
             font-weight: 600;
-            color: var(--text-primary);
+            letter-spacing: 0.02em;
+        }
+        .status-flag {
+            font-size: 18px;
+            line-height: 1;
+        }
+        .test-status--passed {
+            background: rgba(34,197,94,0.18);
+            color: #15803d;
+        }
+        .test-status--failed {
+            background: rgba(239,68,68,0.18);
+            color: #b91c1c;
+        }
+        .test-status--skipped {
+            background: rgba(251,191,36,0.22);
+            color: #92400e;
+        }
+        .test-status--unknown {
+            background: rgba(148,163,184,0.3);
+            color: #334155;
         }
         .retry-grid {
             margin-top: 24px;
@@ -282,7 +321,16 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             color: var(--text-muted);
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
+        }
+        .retry-meta .commands-graph-label {
+            margin-top: 6px;
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: #0f172a;
+            font-weight: bold;
         }
         .command-graph-wrapper {
             background: #fff;
