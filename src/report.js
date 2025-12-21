@@ -689,12 +689,12 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             border-radius: 14px;
             margin-bottom: 0;
             position: relative;
-            height: 560px;
+            height: 672px;
             overflow: hidden;
         }
         @media (max-width: 1024px) {
             .command-graph-wrapper {
-                height: 480px;
+                height: 576px;
             }
         }
         @media (max-width: 640px) {
@@ -738,7 +738,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 text-align: left;
             }
             .command-graph-wrapper {
-                height: 420px;
+                height: 504px;
             }
         }
         .command-graph-wrapper .command-graph {
