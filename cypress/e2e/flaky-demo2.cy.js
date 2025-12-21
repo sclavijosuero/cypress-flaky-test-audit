@@ -201,7 +201,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it.only('test 2.1', () => {  // ⏳ TEST PASS SLOW
+  it.only('test 2.1 - now has a much longer test title that is longer than the previous test title to see how it looks in the report', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW

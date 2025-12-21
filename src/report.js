@@ -30,6 +30,111 @@ const emphasizeColor = (hexColor, factor = 0.35) => {
     return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 };
 
+const asFiniteNumber = (value) => (typeof value === 'number' && Number.isFinite(value)) ? value : null;
+
+const getCommandDurationMs = (cmd) => {
+    if (!cmd) return 0;
+    const perfDuration = asFiniteNumber(cmd.durationPerformance);
+    if (perfDuration !== null && perfDuration >= 0) return perfDuration;
+    const duration = asFiniteNumber(cmd.duration);
+    return duration !== null && duration >= 0 ? duration : 0;
+};
+
+const collectCommandEntries = (resultsGraph) => {
+    if (!resultsGraph) return [];
+    if (resultsGraph instanceof Map) {
+        return Array.from(resultsGraph.values());
+    }
+    if (typeof resultsGraph === 'object') {
+        return Object.values(resultsGraph);
+    }
+    return [];
+};
+
+const trimToDecimals = (value, decimals = 3) => {
+    if (!Number.isFinite(value)) return null;
+    const fixed = value.toFixed(decimals);
+    return fixed.replace(/\.?0+$/, '');
+};
+
+const formatPreciseMilliseconds = (ms) => {
+    if (!Number.isFinite(ms) || ms <= 0) return 'n/a';
+    if (ms < 1000) return `${trimToDecimals(ms)} ms`;
+    return `${trimToDecimals(ms / 1000)} s`;
+};
+
+const getRetryDurationMs = (retryInfo) => {
+    if (!retryInfo) return 0;
+    const explicitDuration = asFiniteNumber(retryInfo.testDuration);
+    if (explicitDuration !== null && explicitDuration >= 0) {
+        return explicitDuration;
+    }
+
+    const commands = collectCommandEntries(retryInfo.resultsGraph);
+    if (!commands.length) return 0;
+
+    const startCandidates = commands
+        .map(cmd => asFiniteNumber(cmd.startTime) ?? asFiniteNumber(cmd.enqueuedTime))
+        .filter(value => value !== null);
+    const endCandidates = commands
+        .map(cmd => {
+            const endTime = asFiniteNumber(cmd.endTime);
+            if (endTime !== null) return endTime;
+            const retryTime = asFiniteNumber(cmd.retryTime);
+            if (retryTime !== null) return retryTime;
+            return asFiniteNumber(cmd.startTime) ?? asFiniteNumber(cmd.enqueuedTime);
+        })
+        .filter(value => value !== null);
+
+    const fallbackStart = asFiniteNumber(retryInfo.testStartTime);
+    const minStart = startCandidates.length ? Math.min(...startCandidates) : fallbackStart;
+    const maxEnd = endCandidates.length ? Math.max(...endCandidates) : null;
+
+    if (minStart !== null && maxEnd !== null && maxEnd >= minStart) {
+        return maxEnd - minStart;
+    }
+
+    const durationFromCommands = commands.reduce((total, cmd) => total + getCommandDurationMs(cmd), 0);
+    return durationFromCommands > 0 ? durationFromCommands : 0;
+};
+
+const getTestDurationMs = (testData) => {
+    if (!testData || !Array.isArray(testData.retriesInfo)) return 0;
+    return testData.retriesInfo.reduce((total, retryInfo) => {
+        if (!retryInfo) return total;
+        const duration = getRetryDurationMs(retryInfo);
+        return total + (Number.isFinite(duration) ? duration : 0);
+    }, 0);
+};
+
+const getSuiteDurationMs = (resultsMap) => {
+    if (!resultsMap || typeof resultsMap.forEach !== 'function') return 0;
+    let total = 0;
+    resultsMap.forEach(testData => {
+        total += getTestDurationMs(testData);
+    });
+    return total;
+};
+
+const formatDuration = (ms) => {
+    if (!Number.isFinite(ms) || ms <= 0) return 'n/a';
+    const totalSeconds = ms / 1000;
+    if (totalSeconds < 60) {
+        return `${trimToDecimals(totalSeconds)} s`;
+    }
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds - hours * 3600 - minutes * 60;
+
+    const parts = [];
+    if (hours) parts.push(`${hours}h`);
+    if (hours || minutes) parts.push(`${minutes}m`);
+    parts.push(`${trimToDecimals(seconds)}s`);
+
+    return parts.join(' ');
+};
+
 // **********************************************************************************
 // PUBLIC FUNCTIONS
 // **********************************************************************************
@@ -70,6 +175,8 @@ const getTestStatusDisplay = (status) => {
 
 const createSuiteAuditHtml = (spec, testAuditResults) => {
     const generatedAt = new Date().toLocaleString();
+    const suiteDurationMs = getSuiteDurationMs(testAuditResults);
+    const suiteDurationDisplay = formatDuration(suiteDurationMs);
 
     const failedTestsCount = Array.from(testAuditResults.values()).filter(test => (test?.testStatus || '').toLowerCase() === 'failed').length;
 
@@ -81,22 +188,30 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                 <h1>${esc(spec.fileName)}</h1>
             </div>
             <div class="suite-stats">
-                <article class="stat-card">
-                    <span class="stat-label">Generated</span>
-                    <span class="stat-value">${esc(generatedAt)}</span>
-                </article>
-                <article class="stat-card">
-                    <span class="stat-label">Spec Path</span>
-                    <span class="stat-value stat-value--small">${esc(spec.relative)}</span>
-                </article>
-                <article class="stat-card">
-                    <span class="stat-label">Total Tests</span>
-                    <span class="stat-value">${testAuditResults.size}</span>
-                </article>
-                <article class="stat-card stat-card--failed">
-                    <span class="stat-label">Failed Tests</span>
-                    <span class="stat-value">${failedTestsCount}</span>
-                </article>
+                <div class="suite-stats__row suite-stats__row--primary">
+                    <article class="stat-card stat-card--generated">
+                        <span class="stat-label">Generated</span>
+                        <span class="stat-value">${esc(generatedAt)}</span>
+                    </article>
+                    <article class="stat-card stat-card--spec">
+                        <span class="stat-label">Spec Path</span>
+                        <span class="stat-value stat-value--small">${esc(spec.relative)}</span>
+                    </article>
+                </div>
+                <div class="suite-stats__row suite-stats__row--secondary">
+                    <article class="stat-card stat-card--duration">
+                        <span class="stat-label">Suite Duration</span>
+                        <span class="stat-value">${esc(suiteDurationDisplay)}</span>
+                    </article>
+                    <article class="stat-card stat-card--total">
+                        <span class="stat-label">Total Tests</span>
+                        <span class="stat-value">${testAuditResults.size}</span>
+                    </article>
+                    <article class="stat-card stat-card--failed ${failedTestsCount === 0 ? 'stat-card--failed-zero' : ''}">
+                        <span class="stat-label">Failed Tests</span>
+                        <span class="stat-value">${failedTestsCount}</span>
+                    </article>
+                </div>
             </div>
         </section>
     `;
@@ -106,16 +221,33 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
     let testIdx = 0;
     for (const [testId, testData] of testAuditResults.entries()) {
         const statusDisplay = getTestStatusDisplay(testData.testStatus);
+        const testDurationMs = getTestDurationMs(testData);
+        const testDurationDisplay = formatDuration(testDurationMs);
         let testHtml = `
         <section class="test-card">
             <header class="test-card__header">
-                <div>
+                <div class="test-card__title-block">
                     <p class="eyebrow eyebrow--dark">Test</p>
                     <h2>${esc(testData.testTitle)}</h2>
                 </div>
-                <div class="test-status ${statusDisplay.className}">
-                    <span class="status-flag" aria-hidden="true">${statusDisplay.flag}</span>
-                    <span class="status-label">${statusDisplay.label}</span>
+                <div class="test-card__summary">
+                    <div class="test-card__summary-label">Summary</div>
+                    <div class="test-card__quick-stats">
+                        <div class="quick-stat quick-stat--duration">
+                            <span class="quick-stat__icon" aria-hidden="true">⏱</span>
+                            <div class="quick-stat__text">
+                                <span class="quick-stat__label">Total Duration</span>
+                                <span class="quick-stat__value">${esc(testDurationDisplay)}</span>
+                            </div>
+                        </div>
+                        <div class="quick-stat quick-stat--status ${statusDisplay.className}">
+                            <span class="quick-stat__icon" aria-hidden="true">${statusDisplay.flag}</span>
+                            <div class="quick-stat__text">
+                                <span class="quick-stat__label">Status</span>
+                                <span class="quick-stat__value">${statusDisplay.label}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
         `;
@@ -139,15 +271,23 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
                     : retryStatus === 'failed'
                         ? 'retry-card retry-card--failed'
                         : 'retry-card retry-card--unknown';
+                const retryStatusText = retryStatus ? retryStatus.charAt(0).toUpperCase() + retryStatus.slice(1) : 'Unknown';
+                const startTimeDisplay = retry?.testStartTime ? new Date(retry.testStartTime).toLocaleString() : 'n/a';
+                const retryDurationMs = getRetryDurationMs(retry);
+                const retryDurationDisplay = formatDuration(retryDurationMs);
                 return `
                     <div class="${cardClass}">
                         <div class="retry-meta">
-                            <div class="retry-meta__line">
-                                <div class="${chipClass}" aria-label="${retryStatus || 'unknown'}">${statusIcon}</div>
-                                <div class="retry-label"><b>${retryLabel}</b></div>
+                            <div class="retry-meta__line retry-meta__line--status">
+                                <div class="${chipClass}" aria-label="${esc(retryStatusText)}">${statusIcon}</div>
+                                <div class="retry-label">
+                                    <b class="retry-count">${esc(retryLabel)}</b>
+                                    <span class="retry-status-text">${esc(retryStatusText)}</span>
+                                </div>
                             </div>
                             <div class="retry-meta__line retry-meta__line--time">
-                                <div><b>Start time:</b> ${retry.testStartTime ? new Date(retry.testStartTime).toLocaleString() : ''}</div>
+                                <div><b>Start time:</b> ${esc(startTimeDisplay)}</div>
+                                <div class="retry-duration"><b>Duration:</b> ${esc(retryDurationDisplay)}</div>
                             </div>
                             <div class="commands-graph-label">Commands Graph</div>
                         </div>
@@ -195,24 +335,31 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             color: #e2e8f0;
         }
         .page {
-            max-width: 1600px;
+            max-width: 1500px;
             margin: 0 auto;
-            padding: 34px 32px 34px;
+            padding: 24px clamp(16px, 4vw, 32px) 28px;
             display: flex;
             flex-direction: column;
-            gap: 32px;
+            gap: 24px;
         }
         .suite-overview {
-            border-radius: 18px;
-            padding: 20px;
-            background: linear-gradient(140deg, rgba(59,130,246,0.92), rgba(14,165,233,0.75));
+            border-radius: 16px;
+            padding: 16px 18px 18px;
+            background: linear-gradient(135deg, rgba(59,130,246,0.92), rgba(14,165,233,0.82));
             color: #fff;
-            box-shadow: 0 18px 40px rgba(15,23,42,0.22);
+            box-shadow: 0 12px 32px rgba(15,23,42,0.2);
+        }
+        .suite-heading {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
         }
         .suite-heading h1 {
-            margin: 6px 0 4px;
-            font-size: 26px;
-            letter-spacing: -0.015em;
+            margin: 2px 0 0;
+            font-size: 22px;
+            letter-spacing: -0.01em;
         }
         .eyebrow {
             text-transform: uppercase;
@@ -224,38 +371,68 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             color: var(--text-muted);
         }
         .suite-stats {
-            margin-top: 14px;
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
-        @media (max-width: 790px) {
-            .suite-stats {
-                grid-template-columns: 1fr;
-            }
+        .suite-stats__row {
+            display: grid;
+            gap: 12px;
+        }
+        .suite-stats__row--primary {
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        }
+        .suite-stats__row--secondary {
+            grid-template-columns: repeat(3, minmax(150px, 1fr));
         }
         .stat-card {
             background: rgba(255,255,255,0.12);
             border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 18px;
-            padding: 16px 20px;
+            border-radius: 14px;
+            padding: 12px 14px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
+            transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+        .stat-card:hover, .stat-card:focus-within {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 30px rgba(15,23,42,0.25);
+        }
+        .stat-card--total {
+            border-color: rgba(255,255,255,0.45);
         }
         .stat-card--failed {
-            background: rgba(239,68,68,0.18);
-            border-color: rgba(239,68,68,0.95);
-            box-shadow: 0 10px 25px rgba(239,68,68,0.35), inset 0 0 0 1px rgba(239,68,68,0.4);
+            background: linear-gradient(145deg, rgba(239,68,68,0.25), rgba(239,68,68,0.55));
+            border-color: rgba(239,68,68,0.9);
+            box-shadow: 0 14px 32px rgba(239,68,68,0.45), inset 0 0 0 1px rgba(255,255,255,0.2);
+        }
+        .stat-card--failed .stat-label {
+            color: rgba(255,255,255,0.85);
+        }
+        .stat-card--failed .stat-value {
+            font-size: 26px;
+        }
+        .stat-card--failed-zero {
+            background: linear-gradient(145deg, rgba(34,197,94,0.25), rgba(34,197,94,0.55));
+            border-color: rgba(34,197,94,0.9);
+            box-shadow: 0 14px 28px rgba(34,197,94,0.4), inset 0 0 0 1px rgba(255,255,255,0.25);
+        }
+        .stat-card--failed-zero .stat-label {
+            color: rgba(255,255,255,0.9);
+        }
+        .stat-card--failed-zero .stat-value {
+            color: #f0fff4;
         }
         .stat-label {
-            font-size: 12px;
+            font-size: 11px;
             text-transform: uppercase;
-            letter-spacing: 0.15em;
+            letter-spacing: 0.2em;
             color: rgba(255,255,255,0.75);
         }
         .stat-value {
-            font-size: 24px;
+            font-size: 21px;
             font-weight: 600;
             color: #fff;
         }
@@ -265,60 +442,142 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         }
         .test-card {
             background: #fff;
-            border-radius: 24px;
-            padding: 28px;
+            border-radius: 16px;
+            padding: 16px 18px 18px;
             box-shadow: var(--card-shadow);
             color: var(--text-primary);
         }
         .test-card__header {
             display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 24px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 12px;
         }
-        .test-card__header h2 {
-            margin: 4px 0 0;
-            font-size: 26px;
-            color: var(--text-primary);
+        .test-card__title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
-        .test-status {
+        .test-card__title-block h2 {
+            margin: 0;
+            font-size: clamp(18px, 2vw, 21px);
+            line-height: 1.35;
+            letter-spacing: -0.01em;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+        .test-card__summary {
+            background: linear-gradient(120deg, rgba(148,163,184,0.12), rgba(148,163,184,0.2));
+            border: 1px solid rgba(148,163,184,0.35);
+            border-radius: 14px;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+        }
+        .test-card__summary-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            color: #0f172a;
+            font-weight: 700;
+        }
+        .test-card__quick-stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: nowrap;
+        }
+        .quick-stat {
+            background: #f6f8fb;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1 1 0;
+            min-width: 0;
+            transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+        .quick-stat:hover,
+        .quick-stat:focus-within {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(15,23,42,0.15);
+        }
+        .quick-stat__icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 10px;
+            background: #e2e8f0;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            font-size: 14px;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .quick-stat__text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .quick-stat__label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            color: var(--text-muted);
+        }
+        .quick-stat__value {
+            font-size: 17px;
             font-weight: 600;
-            letter-spacing: 0.02em;
+            color: var(--text-primary);
+            word-break: break-word;
         }
-        .status-flag {
-            font-size: 18px;
-            line-height: 1;
+        .quick-stat--duration .quick-stat__icon {
+            background: rgba(14,165,233,0.18);
+            color: #075985;
         }
-        .test-status--passed {
-            background: rgba(34,197,94,0.18);
+        .quick-stat--status .quick-stat__label {
+            letter-spacing: 0.18em;
+        }
+        .quick-stat--status.test-status--passed {
+            background: rgba(34,197,94,0.12);
+            border-color: rgba(34,197,94,0.35);
+        }
+        .quick-stat--status.test-status--passed .quick-stat__value {
             color: #15803d;
         }
-        .test-status--failed {
-            background: rgba(239,68,68,0.18);
+        .quick-stat--status.test-status--passed .quick-stat__icon {
+            background: rgba(34,197,94,0.25);
+            color: #14532d;
+        }
+        .quick-stat--status.test-status--failed {
+            background: rgba(239,68,68,0.12);
+            border-color: rgba(239,68,68,0.35);
+        }
+        .quick-stat--status.test-status--failed .quick-stat__value {
             color: #b91c1c;
         }
-        .test-status--skipped {
-            background: rgba(251,191,36,0.22);
-            color: #92400e;
+        .quick-stat--status.test-status--failed .quick-stat__icon {
+            background: rgba(239,68,68,0.25);
+            color: #7f1d1d;
         }
-        .test-status--unknown {
-            background: rgba(148,163,184,0.3);
-            color: #334155;
+        .quick-stat--status.test-status--skipped {
+            background: rgba(251,191,36,0.18);
+            border-color: rgba(251,191,36,0.4);
+        }
+        .quick-stat--status.test-status--unknown {
+            background: rgba(148,163,184,0.25);
+            border-color: rgba(148,163,184,0.4);
         }
         .retry-grid {
-            margin-top: 24px;
+            margin-top: 18px;
             display: grid;
-            gap: 20px;
+            gap: 16px;
         }
         .retry-grid.multi {
-            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         }
         .retry-grid.single {
             grid-template-columns: 1fr;
@@ -326,13 +585,13 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         .retry-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            padding: 20px;
+            border-radius: 14px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
-            border-left: 6px solid transparent;
+            border-left: 4px solid transparent;
         }
         .retry-card--passed {
             border-left-color: #22c55e;
@@ -344,26 +603,38 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             border-left-color: #94a3b8;
         }
         .retry-meta {
-            font-size: 16px;
+            font-size: 14px;
             color: var(--text-muted);
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 4px;
         }
         .retry-meta__line {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 6px;
+        }
+        .retry-meta__line--status {
+            justify-content: flex-start;
+            gap: 10px;
+        }
+        .retry-meta__line--time {
+            flex-wrap: wrap;
             gap: 8px;
         }
+        .retry-meta__line--time > div {
+            flex: 1;
+            min-width: 140px;
+        }
         .retry-status-chip {
-            width: 34px;
-            height: 34px;
+            width: 30px;
+            height: 30px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
         }
         .retry-status-chip--passed {
@@ -379,26 +650,96 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             color: #334155;
         }
         .retry-label {
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .retry-count {
+            font-weight: 600;
+        }
+        .retry-status-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .retry-duration {
+            text-align: right;
         }
         .retry-meta .commands-graph-label {
-            margin-top: 6px;
+            margin: 4px 0 2px;
+            padding: 5px 12px;
             text-align: center;
             font-size: 11px;
-            letter-spacing: 0.35em;
+            letter-spacing: 0.25em;
             text-transform: uppercase;
             color: #0f172a;
-            font-weight: bold;
+            font-weight: 700;
+            background: linear-gradient(120deg, #e2e8f0, #f8fafc);
+            border: 1px solid #cbd5f5;
+            border-radius: 10px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 6px 16px rgba(15,23,42,0.12);
+            align-self: stretch;
         }
         .command-graph-wrapper {
             background: #fff;
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
+            border-radius: 14px;
             margin-bottom: 0;
             position: relative;
-            height: 720px;
+            height: 560px;
             overflow: hidden;
+        }
+        @media (max-width: 1024px) {
+            .command-graph-wrapper {
+                height: 480px;
+            }
+        }
+        @media (max-width: 640px) {
+            .page {
+                padding: 18px 16px 24px;
+            }
+            .suite-overview {
+                padding: 14px 14px 16px;
+            }
+            .suite-heading {
+                flex-direction: column;
+            }
+            .suite-stats__row--primary {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .suite-stats__row--secondary {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .test-card {
+                padding: 16px 18px;
+            }
+            .test-card__summary {
+                padding: 10px 12px;
+            }
+            .quick-stat {
+                padding: 6px 10px;
+            }
+            .quick-stat__icon {
+                width: 26px;
+                height: 26px;
+                font-size: 13px;
+            }
+            .quick-stat__value {
+                font-size: 16px;
+            }
+            .retry-duration {
+                text-align: left;
+            }
+            .retry-meta__line--time > div {
+                flex-basis: 100%;
+                text-align: left;
+            }
+            .command-graph-wrapper {
+                height: 420px;
+            }
         }
         .command-graph-wrapper .command-graph {
             position: absolute;
@@ -522,7 +863,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     })();
 
     const durations = queueOrderedIds
-        .map(id => getDuration(commands[id]))
+        .map(id => getCommandDurationMs(commands[id]))
         .filter(value => Number.isFinite(value) && value > 0);
 
     const maxDuration = durations.length ? Math.max(...durations) : 0;
@@ -550,7 +891,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     const nodes = queueOrderedIds.map(id => {
         const cmd = commands[id];
         const queueIndex = queueIndexById[id];
-        const duration = getDuration(cmd);
+        const duration = getCommandDurationMs(cmd);
         const hasDuration = duration > 0;
         const isAssertion = cmd?.type === 'assertion';
         const shouldRenderAsBox = hasDuration || !isAssertion;
@@ -559,7 +900,10 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         // const argsPreview = formatArgs(cmd.args);
         const argsPreview = '()'
         // if (argsPreview) labelParts.push(argsPreview);
-        if (hasDuration) labelParts.push(`${Math.round(duration)} ms`);
+        if (hasDuration) {
+            const durationLabel = formatPreciseMilliseconds(duration);
+            if (durationLabel !== 'n/a') labelParts.push(durationLabel);
+        }
 
         const isSkippedAssertion = cmd?.type === 'assertion' && cmd?.state === 'skipped';
         const nodeStateKey = isSkippedAssertion ? 'passed' : cmd.state;
@@ -760,13 +1104,6 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             </script>
         `;
 
-    function getDuration(cmd) {
-        if (!cmd) return 0;
-        if (typeof cmd.durationPerformance === 'number') return cmd.durationPerformance;
-        if (typeof cmd.duration === 'number') return cmd.duration;
-        return 0;
-    }
-
     function formatArgs(args) {
         if (!Array.isArray(args) || !args.length) return '';
         let rendered;
@@ -789,7 +1126,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
             `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
             `<div><strong>Execution order:</strong> ${esc(cmd.executionOrder ?? '-')}</div>`,
-            `<div><strong>Duration:</strong> ${esc(duration > 0 ? Math.round(duration) + ' ms' : 'n/a')}</div>`
+            `<div><strong>Duration:</strong> ${esc(duration > 0 ? formatPreciseMilliseconds(duration) : 'n/a')}</div>`
         ];
         return info.filter(Boolean).join('');
     }

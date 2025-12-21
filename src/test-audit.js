@@ -43,12 +43,12 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // Get the test audit results
         const { resultsGraph, testStartTime } = getTestAuditResults(test)
 
-        console.log('#################################### test')
-        console.log(Cypress.spec)
-        console.log(cy.state())
-        console.log(test)
-        console.log(test.state)
-        console.log('####################################')
+        // console.log('#################################### test')
+        // console.log(Cypress.spec)
+        // console.log(cy.state())
+        // console.log(test)
+        // console.log(test.state)
+        // console.log('####################################')
 
         // console.log('#################################### resultsGraph')
         // console.log(resultsGraph)
@@ -81,6 +81,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             currentRetry, 
             retryStatus,
             testStartTime, 
+            testDuration: typeof test.duration === 'number' ? test.duration : undefined,
             resultsGraph
         }
 
@@ -162,6 +163,8 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         let state = $command.state
         if (attributes.type === 'assertion' && idAssertionCommandFailed === id) {
             state = 'failed'
+        } else if (attributes.type === 'assertion' && state === 'skipped') {
+            state = 'passed'
         }
 
         // Skip if the command is a 'task' and its first argument is in testAuditResultTasks (is a task displaying results of the audit)
@@ -207,6 +210,23 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // This is the command Id for the next entry in the queue after currentCommandId (according to the enqued order)
         const nextQueuedCommandId = findNextCommandEnqueuedData(currentTestIdAndRetry, id);
 
+        /**
+         * Handles a special case for assertion command failure display in the graph.
+         * 
+         * Explanation:
+         * - `attributes.query` is truthy when this command is related to an assertion query.
+         * - `state === 'failed'` means this command is currently detected as failed.
+         * - `attributes.currentAssertionCommand` refers to the underlying assertion Cypress is evaluating.
+         * 
+         * This code looks ahead: 
+         *   If this command failed but is associated with a specific underlying assertion command (itself also tracked by id),
+         *   then we consider the *current* command as "passed" for the purposes of the display/graph (by setting its state to 'passed'),
+         *   and instead, track the identifier (`idAssertionCommandThatWillFail`) so we can mark THE ACTUAL assertion command as failed elsewhere.
+         * 
+         * In other words: In Cypress, a "query" command can precede (and is related to) an assertion. 
+         * If the assertion will fail, that failure should be shown as a property of the assertion node,
+         * not the query node. This logic ensures only the relevant assertion node gets a failed state.
+         */
         let idAssertionCommandThatWillFail
         if (attributes.query && state === 'failed') {
             idAssertionCommandThatWillFail = attributes.currentAssertionCommand?.attributes?.id
