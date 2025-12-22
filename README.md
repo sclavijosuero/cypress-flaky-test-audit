@@ -4,7 +4,7 @@ A Cypress plugin that tracks the order in which Cypress commands are entered int
 
 It helps identify flaky tests, performance bottlenecks, and commands that don’t execute, and presents audit results in the browser console, terminal output, and an HTML report with visual graphs of Cypress command execution across your test suite.
 
-![Animated demo of the Flaky Test Audit plugin in action](assets/demo-placeholder.gif)
+![Animated demo of the Flaky Test Audit plugin in action](assets/overview.gif)
 
 Related reading: [The async nature of Cypress – don’t mess with the timelines in your Cypress tests (dual verse)](https://dev.to/sebastianclavijo/the-async-nature-of-cypress-dont-mess-with-the-timelines-in-your-cypress-tests-dual-verse-3ehh)
 
@@ -31,7 +31,8 @@ Related reading: [The async nature of Cypress – don’t mess with the timeline
   - **Fully interactive command graph (per retry)**: a zoomable/pannable network-style view of the command queue and execution flow, showing blocks nested relationships and state transitions.
     - **Tooltips**: inspect each command details (type, runnable context, timings, internal retries).
     - **Visual cues**: quickly spot failures, queued-but-never-run commands, and slow commands (based on your thresholds).
-- 🧩 **Minimal setup** – a single import in `cypress/support/e2e.js` plus one helper in `cypress.config.js`.
+  - **Mobile responsive**: Fully mobile responsive.
+  - 🧩 **Minimal setup** – a single import in `cypress/support/e2e.js` plus one helper in `cypress.config.js`.
 
 ## Compatibility
 
@@ -216,29 +217,31 @@ Test Failed in #0 retry.
       - Graph supports zooming and panning.
 
       - And provides per-command tooltips with execution details.
-      
+
 - Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder`.
 
-#### HTML report overview
+#### HTML report - Overview
 
 ![HTML report overview](assets/html-report-overview-placeholder.png)
 
-#### Test passes on the first attempt and Cypress Command tooltip
+#### HTML report - Test passes on the first attempt and Cypress Command tooltip
 
 ![Test passes on the first attempt and Cypress Command tooltip](assets/html-report-pass-tooltip-placeholder.png)
 
-#### Test passes after one or more retries
+#### HTML report - Test passes after one or more retries
 
 ![Test passes after one or more retries](assets/html-report-pass-retries-placeholder.png)
 
-#### Test fails after all retries are exhausted
+#### HTML report - Test fails after all retries are exhausted
 
 ![Test fails after all retries are exhausted](assets/html-report-fail-placeholder.png)
 
+#### HTML report - Fully mobile responsive
+
+![Test hook commands and no retries configured](assets/html-report-mobile-responsive-placeholder.png)
+
+
 #### Test hook commands and no retries configured
-
-![Test hook commands and no retries configured](assets/html-report-hooks-placeholder.png)
-
 
 ## License
 

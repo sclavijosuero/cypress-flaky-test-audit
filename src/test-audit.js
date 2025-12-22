@@ -19,13 +19,6 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? 5000   // Default 5 seconds
     const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? 1500 // Default 1.5 seconds
 
-    // ----------------------------------------------------------------------------------
-    // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
-    // ----------------------------------------------------------------------------------
-    beforeEach(() => {
-
-    })
-
 
     // ----------------------------------------------------------------------------------
     // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
@@ -42,17 +35,6 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
         // Get the test audit results
         const { resultsGraph, testStartTime } = getTestAuditResults(test)
-
-        // console.log('#################################### test')
-        // console.log(Cypress.spec)
-        // console.log(cy.state())
-        // console.log(test)
-        // console.log(test.state)
-        // console.log('####################################')
-
-        // console.log('#################################### resultsGraph')
-        // console.log(resultsGraph)
-        // console.log('####################################')
 
         if (!resultsGraph) return
 
@@ -127,10 +109,6 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         // Get the first command enqueued data
         const commandEnqueuedData = commandsEnqueuedIterator.next().value;
 
-        // console.log('*************************************************')
-        // console.log(commandEnqueuedData)
-        // console.log('*************************************************')
-
         // Process all the commands of the test and return a directed graph with the commands as nodes
         let resultsGraph = processCommand({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId: null }, new Map())
 
@@ -142,18 +120,10 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
     }
 
-    // const createEnqueuedEdges = (resultsGraph) => {
-
-    //     return resultsGraph
-    // }
 
     const processCommand = ({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId, idAssertionCommandFailed }, resultsGraph = new Map()) => {
         // Return early if command enqueued data is missing or the command is missing
         if (!commandEnqueuedData || !commandEnqueuedData.command) return resultsGraph
-
-        // console.log('---------------------------')
-        // console.log(commandEnqueuedData)
-        // console.log('---------------------------')
 
         const runInfo = commandEnqueuedData.runInfo
         const $command = commandEnqueuedData.command
@@ -266,10 +236,6 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             prevQueuedCommandId: undefined,
             nestedLevel: undefined,
         }
-        // console.log('===============================================')
-        // console.log(runInfo)
-        // console.log(commandInfo)
-        // console.log('===============================================')
 
         resultsGraph.set(id, commandInfo)
 
