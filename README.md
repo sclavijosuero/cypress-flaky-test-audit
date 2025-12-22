@@ -200,14 +200,23 @@ Test Failed in #0 retry.
 ### HTML Report
 
 - Written automatically when `createFlakyTestAuditReport` is **`true`**.
+
 - Each report contains:
+
   - Suite overview with total tests, failures, suite run duration, and metadata.
+
   - Individual test cards summarizing test title, total duration, and test status (passed/failed).
+
   - For each retry in a test:
+
     - Retry number, start time, and duration.
-    - Fully interactive command graph (rendered via `vis-network`) that visualizes the execution timeline, nested executions, and state transitions.
+
+    - Fully interactive **command graph** (rendered via `vis-network`) that visualizes the execution timeline, nested executions, and state transitions.
+
       - Graph supports zooming and panning.
+
       - And provides per-command tooltips with execution details.
+      
 - Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder`.
 
 #### HTML report overview
@@ -225,6 +234,10 @@ Test Failed in #0 retry.
 #### Test fails after all retries are exhausted
 
 ![Test fails after all retries are exhausted](assets/html-report-fail-placeholder.png)
+
+#### Test hook commands and no retries configured
+
+![Test hook commands and no retries configured](assets/html-report-hooks-placeholder.png)
 
 
 ## License

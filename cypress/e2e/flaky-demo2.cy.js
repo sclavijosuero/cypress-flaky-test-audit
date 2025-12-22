@@ -45,21 +45,19 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  it('test 1.2', () => {  // ❌ TEST FAIL 
+  it.only('test 1.2', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })
     // cy.get('#contact input[data-testid="ContactEmail"]').type('paul.mcCartney@gmail.com', { delay: 0 })
 
     cy.get('#contact input[data-testid="ContactName"]')
-      .should('have.value', 'paul mcCartneyyyyyyy') // ❌ C.FAIL
+      .should('have.value', 'paul mcCartneyyyyyyy')
       .and('have.class', 'form-control')
-      .and('have.css', 'color', 'red')
+
 
     cy.wait(timeToWait) // ⛔ C.NEVER RUN
-    cy.get('#contact button') // ⛔ C. NEVER RUN
-      .contains('Submit') // ⛔ C.NEVER RUN
-      .click() // ⛔ C.NEVER RUN
+
   })
 
   it('test 1.3', () => {  // ❌ TEST FAIL 
