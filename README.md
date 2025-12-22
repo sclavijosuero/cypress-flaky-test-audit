@@ -192,9 +192,9 @@ Test Passed in #1 retry, but the overall execution was slow (more than `testSlow
 
 #### Terminal Console List Format
 
-Test Failed in the #0 retry.
+Test Failed in #0 retry.
 
-![Terminal Console List Format - Test Failed in the #0 retry](assets/terminal-output-list-fails-placeholder.png)
+![Terminal Console List Format - Test Failed in #0 retry](assets/terminal-output-list-fails-placeholder.png)
 
 
 ### HTML Report
@@ -212,23 +212,19 @@ Test Failed in the #0 retry.
 
 #### HTML report overview
 
-![HTML report placeholder](assets/html-report-overview-placeholder.png)
+![HTML report overview](assets/html-report-overview-placeholder.png)
 
-#### Test passes on the first attempt (or when retries are disabled)
+#### Test passes on the first attempt and Cypress Command tooltip
 
-![HTML report placeholder](assets/html-report-pass-placeholder.png)
+![Test passes on the first attempt and Cypress Command tooltip](assets/html-report-pass-tooltip-placeholder.png)
 
 #### Test passes after one or more retries
 
-![HTML report placeholder](assets/html-report-pass-retries-placeholder.png)
+![Test passes after one or more retries](assets/html-report-pass-retries-placeholder.png)
 
 #### Test fails after all retries are exhausted
 
-![HTML report placeholder](assets/html-report-fail-placeholder.png)
-
-#### Graph command details
-
-![HTML report placeholder](assets/html-report-graph-command-placeholder.png)
+![Test fails after all retries are exhausted](assets/html-report-fail-placeholder.png)
 
 
 ## License
