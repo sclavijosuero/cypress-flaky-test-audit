@@ -1,6 +1,6 @@
 {
   "name": "cypress-flaky-test-audit",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0",
   "description":"Cypress plugin for deep per-command insights, including queue order, execution timing, and visual HTML reports.",
   "main": "src/test-audit.js",
   "scripts": {

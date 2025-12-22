@@ -32,16 +32,11 @@ Related reading: [The async nature of Cypress – don’t mess with the timeline
 ✔️ **Task-free HTML Export** – When enabled, automatically writes a timestamped HTML file per spec under `cypress/reports/flaky-test-audit/`, including:
 
    - **Suite overview**: Totals (tests, passes/failures), run duration, and metadata.
-
    - **Test & retry cards**: Per-test status plus a breakdown of each retry (retry index, start time, duration).
-
    - **Fully interactive command graph (per retry)**: Zoomable/pannable network-style view of the command queue and execution flow, showing blocks nested relationships and state transitions.
-
    - **Tooltips**: Inspect each command details on commnad click (type, runnable context, timings, internal retries).
-
    - **Visual cues**: Quickly spot failures, queued-but-never-run commands, and slow commands (based on your thresholds).
-
-   - **Mobile responsive**: 100% mobile responsive.
+   - **Fully mobile responsive**: 100% responsive to mobile layouts.
 
 ✔️ **Minimal setup** – a single import in `cypress/support/e2e.js` plus one helper in `cypress.config.js`.
 
@@ -161,11 +156,8 @@ Depending on which outputs you enable, the audit data is presented in three diff
     1. **`State`**: Whether the command executed successfully or not.
 
         - **`✔️ PASSED`**: The command ran successfully.
-
         - **`✔️ PASSED (⏳ *slow*)`**: The command passed but was slower than the threshold set by the `commandSlownessThreshold` environment variable.
-
         - **`❌ FAILED`**: The command caused the test to fail.
-
         - **`⛔ QUEUED (*never run*)`**: The command was added to the Cypress queue but never run.
       
     2. **`Runnable type`**: Where the command ran: in a **hook** (`before each`, `after each`) or in the main `test` **body**.
@@ -180,13 +172,13 @@ Depending on which outputs you enable, the audit data is presented in three diff
 
 #### Browser Console Table Format
 
-Test failed in #0 retry.
+Test failed in retry #0.
 
 ![Browser Console Table Format - Test failed in #0 retry](assets/browser-console-table-fail-placeholder.png)
 
 #### Browser Console List Format
 
-Test Passed in #1 retry, but the overall execution was slow (more than `testSlownessThreshold`).
+Test Passed in retry #1, but the overall execution was slow (more than `testSlownessThreshold`).
 
 ![Browser Console List Format - Test Passed in #1 retry but overall execution was slow](assets/browser-console-list-passed-slow-placeholder.png)
 
@@ -198,20 +190,18 @@ Test Passed in #1 retry, but the overall execution was slow (more than `testSlow
 
 #### Terminal Console Table Format
 
-Test Passed in #1 retry, but the overall execution was slow (more than `testSlownessThreshold`).
+Test Passed in retry #1, but the overall execution was slow (more than `testSlownessThreshold`).
 
 ![Terminal Console Table Format - Test Passed in #1 retry but the overall execution was slow](assets/terminal-output-table-placeholder.png)
 
 #### Terminal Console List Format
 
-Test Failed in #0 retry.
+Test Failed in retry #0.
 
 ![Terminal Console List Format - Test Failed in #0 retry](assets/terminal-output-list-fails-placeholder.png)
 
 
 ### HTML Report
-
-- Written automatically when `createFlakyTestAuditReport` is **`true`**.
 
 - Each report contains:
 
@@ -222,12 +212,11 @@ Test Failed in #0 retry.
   - For each retry in a test:
 
     - Retry number, start time, and duration.
-
     - Fully interactive **command graph** (rendered via `vis-network`) that visualizes the execution timeline, nested executions, and state transitions.
+    - Graph supports zooming and panning.
+    - And provides per-command tooltips with execution details.
 
-      - Graph supports zooming and panning.
-
-      - And provides per-command tooltips with execution details.
+- Written automatically when `createFlakyTestAuditReport` is **`true`**.
 
 - Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder`.
 
@@ -271,5 +260,5 @@ Contributions are welcome! If you find a bug or want to propose an improvement:
 
 ## Changelog
 
-- **1.0.0-beta.1** – Initial public beta with console outputs and interactive HTML report.
+- **1.0.0** – Initial public beta with console outputs and interactive HTML report.
 
