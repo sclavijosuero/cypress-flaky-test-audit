@@ -56,7 +56,7 @@ npm install --save-dev cypress-flaky-test-audit
 1. **Register the plugin tasks** and the audit report folder inside `cypress.config.js` (or `cypress.config.ts`):
 
     ```js
-    const addFlakyTestAuditTasks = require('flaky-test-audit/src/tasks');
+    const addFlakyTestAuditTasks = require('cypress-flaky-test-audit/src/tasks');
 
     module.exports = {
       testAuditFolder: 'cypress/reports/flaky-test-audit/',
@@ -77,7 +77,7 @@ npm install --save-dev cypress-flaky-test-audit
 2. **Enable the audit at runtime** by importing the main hook file at the very beginning of your `cypress/support/e2e.js` file (this will ensure you do not leave out any `beforeEach` and `afterEach` hooks from the test audit for the suite):
 
     ```js
-    import 'flaky-test-audit';
+    import 'cypress-flaky-test-audit';
     ```
 
 3. **Toggle the feature** using Cypress environment variables (see [Configuration](#configuration)).
@@ -185,7 +185,7 @@ Test Passed in retry #1, but the overall execution was slow (more than `testSlow
 
 ### Terminal Console
 
-- Mirrors the browser output through custom `cy.task` handlers (see `flaky-test-audit/src/tasks.js`).
+- Mirrors the browser output through custom `cy.task` handlers (see `cypress-flaky-test-audit/src/tasks.js`).
 - Useful for headless and CI logs where you still need per-retry and per-command diagnostics.
 
 #### Terminal Console Table Format

@@ -147,8 +147,9 @@ const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
     const htmlReport = createSuiteAuditHtml(spec, testAuditResults)
 
     const dateStr = new Date().toISOString().replace(/[:]/g, '-');
+    const testAuditFolder = Cypress.config('testAuditFolder') || 'cypress/reports/flaky-test-audit/';
     cy.writeFile(
-        Cypress.config('testAuditFolder') +
+        testAuditFolder +
         spec.fileName +
         "_" +
         dateStr +
