@@ -182,22 +182,23 @@ const commandDataAsList = ({ commands, commandSlownessThreshold, consoleType }) 
         const commandType = ` | ${getCommandType(commandInfo)}`;
         const name = ` | ${getCommandName(commandInfo, consoleType)}`;
 
+        const enqueuedOrder = ` | Enqueued order: ${commandInfo.queueInsertionOrder}`
         const commandEnqueuedTime = ` | Enqueued time: ${new Date(commandInfo.enqueuedTime).toLocaleTimeString(undefined, timeOptions)}`
         // const commandEnqueuedTimePerformance = ` | Enqueued time performance: ${commandInfo.enqueuedTimePerformance.toFixed(3)} ms`
 
-        const commandStartTime = commandInfo.startTime ? ` | Start time: ${new Date(commandInfo.startTime).toLocaleTimeString(undefined, timeOptions)}` : ''
-        // const commandStartTimePerformance = commandInfo.startTimePerformance ? ` | Start time performance: ${commandInfo.startTimePerformance.toFixed(3)} ms` : ''
+        const executionOrder = ` | Execution order: ${commandInfo.executionOrder ?? '-'}`
+        const commandStartTime = ` | Start time: ${commandInfo.startTime !== undefined && commandInfo.startTime !== null ? new Date(commandInfo.startTime).toLocaleTimeString(undefined, timeOptions) : '-'}`
+        // const commandStartTimePerformance = commandInfo.startTimePerformance ? ` | Start time performance: ${commandInfo.startTimePerformance.toFixed(3)} ms` : '
 
-        const commandRunTime = commandInfo.duration ? ` | Run time: ${commandInfo.duration} ms` : ''
+        const commandRunTime = ` | Run  (ms): ${commandInfo.duration ?? '-'}${commandInfo.duration === 0 || commandInfo.duration ? ' ms' : ''}`
         // const commandRunTimePerformance = commandInfo.durationPerformance ? ` | Run time performance: ${commandInfo.durationPerformance.toFixed(3)} ms` : ''
 
         // const commandEndTime = commandInfo.endTime ? ` | End time: ${new Date(commandInfo.endTime).toLocaleTimeString(undefined, timeOptions)}` : ''
         // const commandEndTimePerformance = commandInfo.endTimePerformance ? ` | End time performance: ${commandInfo.endTimePerformance.toFixed(3)} ms` : ''
 
-        const commandRetries = ` | #Internal retries: ${commandInfo.retries ?? ""}`
+        const commandRetries = ` | #Internal retries: ${commandInfo.retries ?? '-'}`
 
-        list.push(`      ${state}${runnableType}${commandType}${name}${commandEnqueuedTime}${commandStartTime}${commandRunTime}${commandRetries}`)
-        // list.push(`      ${state}${runnableType}${commandType}${name}${commandEnqueuedTime}${commandEnqueuedTimePerformance}${commandStartTime}${commandStartTimePerformance}${commandRunTime}${commandRunTimePerformance}${commandRetries}`)
+        list.push(`   ${state}${runnableType}${commandType}${name}${enqueuedOrder}${commandEnqueuedTime}${executionOrder}${commandStartTime}${commandRunTime}${commandRetries}`)
     })
     return list
 }
@@ -216,16 +217,19 @@ const commandDataAsTable = ({ commands, commandSlownessThreshold, consoleType })
             "Type": `${commandType}`,
             "Command": name,
 
+            "Enqueued order": commandInfo.queueInsertionOrder,
             "Enqueued time": new Date(commandInfo.enqueuedTime).toLocaleTimeString(undefined, timeOptions),
             // "Enqueued time performance": `${commandInfo.enqueuedTimePerformance.toFixed(3)} ms`,
 
-            "Start time": commandInfo.startTime ? new Date(commandInfo.startTime).toLocaleTimeString(undefined, timeOptions) : ``,
+            "Execution order": commandInfo.executionOrder ?? '',
+            "Start time": commandInfo.startTime ? `${new Date(commandInfo.startTime).toLocaleTimeString(undefined, timeOptions)}` : ``,
             // "Start time performance": commandInfo.startTimePerformance ? `${commandInfo.startTimePerformance.toFixed(3)} ms` : ``,
 
             // "End time": commandInfo.endTime ? new Date(commandInfo.endTime).toLocaleTimeString(undefined, timeOptions) : ``,
             // "End time performance": commandInfo.endTimePerformance ? `${commandInfo.endTimePerformance.toFixed(3)} ms` : ``,
 
-            "Run time": commandInfo.duration ? `${commandInfo.duration} ms` : ``,
+            // "Run time (ms)": commandInfo.duration ? `${commandInfo.duration.toFixed(3)}` : ``,
+            "Run time (ms)": commandInfo.duration ?? ``,
             // "Run time performance": commandInfo.durationPerformance ? `${commandInfo.durationPerformance.toFixed(3)} ms` : ``,
 
             "#Internal retries": commandInfo.retries ?? "",

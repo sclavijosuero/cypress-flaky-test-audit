@@ -7,14 +7,13 @@ module.exports = defineConfig({
   viewportHeight: 1080,
   watchForFileChanges: false,
 
-  testAuditFolder: 'cypress/reports/flaky-test-audit/',
-
   retries: {
     runMode: 0,
     openMode: 1,
   },
 
   e2e: {
+    testAuditFolder: 'cypress/reports/flaky-test-audit/',
     setupNodeEvents(on, config) {
       addFlakyTestAuditTasks(on);
 
