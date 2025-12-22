@@ -220,6 +220,8 @@ Test Failed in retry #0.
 
 - Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder`.
 
+> You can download an example HTML report of a flaky test audit from [this file](assets/Example-report-flaky-test-audit_2025-12-22T00-44-28.042Z.html).
+
 #### HTML report - Overview
 
 ![HTML report overview](assets/html-report-overview-placeholder.png)
