@@ -242,6 +242,10 @@ Test Failed in retry #0.
 
 ####  HTML report - Test hook commands and no retries configured
 
+Cypress commands that are part of `beforeEach()` and `afterEach()` hooks are shown in a faded color for clarity.
+
+> ⚠️ Commands that are part of a `before()` or `after()` hook are not included.
+
 ![Test hook commands and no retries configured](assets/html-report-hooks-placeholder.png)
 
 
