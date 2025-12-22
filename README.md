@@ -21,18 +21,18 @@ Related reading: [The async nature of Cypress – don’t mess with the timeline
 
 ## Main Features
 
-- 🔍 **Command Queue Tracing** – captures enqueue order, runnable type, nested relationships, and execution transitions for every Cypress command and assertion.
-- ⏱️ **Retry-aware Test Timeline** – stores metadata for each test attempt (start time, duration, retry index, pass/fail state) so you can compare executions side-by-side.
-- 🔀 **Multiple Output Channels** – choose between browser console, terminal console, and a shareable HTML report enriched with network-style graphs.
-- 🐌 **Slowness Thresholds** – highlight slow tests and commands with customizable performance budgets.
-- 📑 **Task-free HTML Export** – when enabled, automatically writes a timestamped HTML file per spec under `cypress/reports/flaky-test-audit/`, including:
-  - **Suite overview**: totals (tests, passes/failures), run duration, and metadata.
-  - **Test & retry cards**: per-test status plus a breakdown of each retry (retry index, start time, duration).
-  - **Fully interactive command graph (per retry)**: a zoomable/pannable network-style view of the command queue and execution flow, showing blocks nested relationships and state transitions.
-    - **Tooltips**: inspect each command details (type, runnable context, timings, internal retries).
-    - **Visual cues**: quickly spot failures, queued-but-never-run commands, and slow commands (based on your thresholds).
-  - **Mobile responsive**: Fully mobile responsive.
-  - 🧩 **Minimal setup** – a single import in `cypress/support/e2e.js` plus one helper in `cypress.config.js`.
+✔️ **Command Queue Tracing** – Captures enqueue order, runnable type, nested relationships, and execution transitions for every Cypress command and assertion.
+✔️ **Retry-aware Test Timeline** – Stores metadata for each test attempt (start time, duration, retry index, pass/fail state) so you can compare executions side-by-side.
+✔️ **Multiple Output Channels** – Choose between browser console, terminal console, and a shareable HTML report enriched with network-style graphs.
+✔️ **Slowness Thresholds** – Highlight slow tests and commands with customizable performance budgets.
+✔️ **Task-free HTML Export** – When enabled, automatically writes a timestamped HTML file per spec under `cypress/reports/flaky-test-audit/`, including:
+    - **Suite overview**: Totals (tests, passes/failures), run duration, and metadata.
+    - **Test & retry cards**: Per-test status plus a breakdown of each retry (retry index, start time, duration).
+    - **Fully interactive command graph (per retry)**: Zoomable/pannable network-style view of the command queue and execution flow, showing blocks nested relationships and state transitions.
+    - **Tooltips**: Inspect each command details on commnad click (type, runnable context, timings, internal retries).
+    - **Visual cues**: Quickly spot failures, queued-but-never-run commands, and slow commands (based on your thresholds).
+    - **Mobile responsive**: 100% mobile responsive.
+✔️ **Minimal setup** – a single import in `cypress/support/e2e.js` plus one helper in `cypress.config.js`.
 
 ## Compatibility
 
