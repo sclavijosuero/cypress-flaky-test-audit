@@ -684,6 +684,44 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 0 6px 16px rgba(15,23,42,0.12);
             align-self: stretch;
         }
+        .command-graph-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .graph-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px;
+            width: fit-content;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f8fafc, #eef2ff);
+            border: 1px solid #dbe4ff;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 6px 16px rgba(15,23,42,0.12);
+        }
+        .graph-toggle__btn {
+            border: none;
+            background: transparent;
+            color: #1f2937;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            font-size: 11px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .graph-toggle__btn:hover {
+            background: rgba(148, 163, 184, 0.18);
+        }
+        .graph-toggle__btn.is-active {
+            background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+            color: #fff;
+            box-shadow: 0 8px 18px rgba(14,165,233,0.32);
+            border: 1px solid rgba(14,165,233,0.45);
+        }
         .command-graph-wrapper {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -899,141 +937,189 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     };
 
     const tooltipByNode = {};
-    const dotLabels = {};
 
-    const nodes = queueOrderedIds.map(id => {
-        const cmd = commands[id];
-        const queueIndex = queueIndexById[id];
-        const duration = getCommandDurationMs(cmd);
-        const hasDuration = duration > 0;
-        const isAssertion = cmd?.type === 'assertion';
-        const shouldRenderAsBox = hasDuration || !isAssertion;
-        const nestedLevel = getNestedLevel(cmd);
-        const labelParts = [`${cmd.name + '()' || 'command'}`];
-        // const argsPreview = formatArgs(cmd.args);
-        const argsPreview = '()'
-        // if (argsPreview) labelParts.push(argsPreview);
-        if (hasDuration) {
-            const durationLabel = formatPreciseMilliseconds(duration);
-            if (durationLabel !== 'n/a') labelParts.push(durationLabel);
-        }
+    const buildGraphData = (mode = 'execution') => {
+        const dotLabels = {};
+        const isQueueMode = mode === 'queue';
+        const orderingMap = isQueueMode ? queueIndexById : orderIndexById;
+        const nodes = queueOrderedIds.map(id => {
+            const cmd = commands[id];
+            const queueIndex = queueIndexById[id];
+            const duration = getCommandDurationMs(cmd);
+            const hasDuration = duration > 0;
+            const isAssertion = cmd?.type === 'assertion';
+            const shouldRenderAsBox = hasDuration || !isAssertion;
+            const nestedLevel = getNestedLevel(cmd);
+            const labelParts = [`${cmd.name + '()' || 'command'}`];
+            // const argsPreview = formatArgs(cmd.args);
+            const argsPreview = '()'
+            // if (argsPreview) labelParts.push(argsPreview);
+            if (hasDuration) {
+                const durationLabel = formatPreciseMilliseconds(duration);
+                if (durationLabel !== 'n/a') labelParts.push(durationLabel);
+            }
 
-        const isSkippedAssertion = cmd?.type === 'assertion' && cmd?.state === 'skipped';
-        const nodeStateKey = isSkippedAssertion ? 'passed' : cmd.state;
-        let nodeColor = colorByState[nodeStateKey] || '#546e7a';
-        const isNonTestRunnable = cmd?.runnableType && cmd.runnableType !== 'test';
-        if (isNonTestRunnable) {
-            nodeColor = emphasizeColor(nodeColor, 0.6);
-        }
+            const isSkippedAssertion = cmd?.type === 'assertion' && cmd?.state === 'skipped';
+            const nodeStateKey = isSkippedAssertion ? 'passed' : cmd.state;
+            let nodeColor = colorByState[nodeStateKey] || '#546e7a';
+            const isNonTestRunnable = cmd?.runnableType && cmd.runnableType !== 'test';
+            if (isNonTestRunnable) {
+                nodeColor = emphasizeColor(nodeColor, 0.6);
+            }
 
-        const width = hasDuration
-            ? Math.max(
-                minBoxWidth,
-                maxDuration ? (duration / maxDuration) * maxBoxWidth : minBoxWidth
-            )
-            : minBoxWidth;
+            const width = hasDuration
+                ? Math.max(
+                    minBoxWidth,
+                    maxDuration ? (duration / maxDuration) * maxBoxWidth : minBoxWidth
+                )
+                : minBoxWidth;
 
-        const nodeX = nestedLevel * identNestedLevel;
-        const orderIndex = orderIndexById[id] ?? queueIndex;
-        const nodeY = nodeBaseY + orderIndex * verticalSpacing;
-        const tooltipHtml = buildTooltip(cmd, duration);
-        const nodeFontColor = isNonTestRunnable ? '#0b1220' : '#fff';
-        const nodeFontSize = shouldRenderAsBox ? 18 : 11;
-        const node = {
-            id,
-            label: labelParts.join('\n'),
-            x: nodeX,
-            y: nodeY,
-            fixed: true,
-            color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
-            font: { face: 'monospace', align: 'left', multi: 'md', color: nodeFontColor, size: nodeFontSize },
-            tooltip: tooltipHtml
-        };
-        tooltipByNode[id] = tooltipHtml;
+            const nodeX = nestedLevel * identNestedLevel;
+            const orderIndex = orderingMap[id] ?? queueIndex ?? 0;
+            const nodeY = nodeBaseY + orderIndex * verticalSpacing;
+            const tooltipHtml = buildTooltip(cmd, duration);
+            const nodeFontColor = isNonTestRunnable ? '#0b1220' : '#fff';
+            const nodeFontSize = shouldRenderAsBox ? 18 : 11;
+            const node = {
+                id,
+                label: labelParts.join('\n'),
+                x: nodeX,
+                y: nodeY,
+                fixed: true,
+                color: { background: nodeColor, border: '#263238', highlight: { background: nodeColor, border: '#000' } },
+                font: { face: 'monospace', align: 'left', multi: 'md', color: nodeFontColor, size: nodeFontSize },
+                tooltip: tooltipHtml
+            };
+            if (!tooltipByNode[id]) {
+                tooltipByNode[id] = tooltipHtml;
+            }
 
-        if (shouldRenderAsBox) {
-            node.shape = 'box';
-            node.widthConstraint = { minimum: width, maximum: width };
-            node.font.align = 'center';
-        } else {
-            node.shape = 'dot';
-            node.size = 14;
-            node.label = '';
-            node.font = { face: 'monospace', color: '#263238', align: 'left' };
-            dotLabels[id] = labelParts.join(' ');
-        }
+            if (shouldRenderAsBox) {
+                node.shape = 'box';
+                node.widthConstraint = { minimum: width, maximum: width };
+                node.font.align = 'center';
+            } else {
+                node.shape = 'dot';
+                node.size = 14;
+                node.label = '';
+                node.font = { face: 'monospace', color: '#263238', align: 'left' };
+                dotLabels[id] = labelParts.join(' ');
+            }
 
-        return node;
-    });
+            return node;
+        });
 
-    const edges = [];
-    const queueEdgeKeys = new Set();
+        const edges = [];
+        const queueEdgeKeys = new Set();
 
-    // Actual execution flow (nextCommandId)
-    queueOrderedIds.forEach(id => {
-        const cmd = commands[id];
-        if (cmd.nextCommandId && commands[cmd.nextCommandId]) {
-            const fromLevel = getNestedLevel(cmd);
-            const toLevel = getNestedLevel(commands[cmd.nextCommandId]);
-            const roundness = toLevel > fromLevel ? 0.3 : toLevel < fromLevel ? 0.05 : 0.15;
-            edges.push({
-                from: id,
-                to: cmd.nextCommandId,
-                arrows: 'to',
-                color: '#1976d2',
-                width: 2,
-                smooth: {
-                    type: 'cubicBezier',
-                    roundness
-                }
-            });
-        }
-        const prevQueuedId = cmd.prevQueuedCommandId;
-        if (prevQueuedId && commands[prevQueuedId]) {
-            const prevLevel = getNestedLevel(commands[prevQueuedId]);
-            const currentLevel = getNestedLevel(cmd);
-            if (prevLevel === currentLevel) {
-                const key = prevQueuedId + '->' + id;
-                if (!queueEdgeKeys.has(key)) {
-                    queueEdgeKeys.add(key);
+        if (isQueueMode) {
+            for (let i = 0; i < queueOrderedIds.length - 1; i++) {
+                const fromId = queueOrderedIds[i];
+                const toId = queueOrderedIds[i + 1];
+                if (commands[fromId] && commands[toId]) {
                     edges.push({
-                        from: prevQueuedId,
-                        to: id,
+                        from: fromId,
+                        to: toId,
                         arrows: 'to',
-                        color: '#90a4ae',
+                        color: '#1976d2',
+                        width: 2,
                         dashes: true,
-                        width: 1.5,
                         smooth: {
                             type: 'cubicBezier',
-                            roundness: 0.15
+                            roundness: 0.12
                         }
                     });
                 }
             }
+        } else {
+            queueOrderedIds.forEach(id => {
+                const cmd = commands[id];
+                if (cmd.nextCommandId && commands[cmd.nextCommandId]) {
+                    const fromLevel = getNestedLevel(cmd);
+                    const toLevel = getNestedLevel(commands[cmd.nextCommandId]);
+                    const roundness = toLevel > fromLevel ? 0.3 : toLevel < fromLevel ? 0.05 : 0.15;
+                    edges.push({
+                        from: id,
+                        to: cmd.nextCommandId,
+                        arrows: 'to',
+                        color: '#1976d2',
+                        width: 2,
+                        smooth: {
+                            type: 'cubicBezier',
+                            roundness
+                        }
+                    });
+                }
+                const prevQueuedId = cmd.prevQueuedCommandId;
+                if (prevQueuedId && commands[prevQueuedId]) {
+                    const prevLevel = getNestedLevel(commands[prevQueuedId]);
+                    const currentLevel = getNestedLevel(cmd);
+                    if (prevLevel === currentLevel) {
+                        const key = prevQueuedId + '->' + id;
+                        if (!queueEdgeKeys.has(key)) {
+                            queueEdgeKeys.add(key);
+                            edges.push({
+                                from: prevQueuedId,
+                                to: id,
+                                arrows: 'to',
+                                color: '#90a4ae',
+                                dashes: true,
+                                width: 1.5,
+                                smooth: {
+                                    type: 'cubicBezier',
+                                    roundness: 0.15
+                                }
+                            });
+                        }
+                    }
+                }
+            });
         }
-    });
 
+        return { nodes, edges, dotLabels };
+    };
+
+    const executionGraph = buildGraphData('execution');
+    const queueGraph = buildGraphData('queue');
     const wrapperId = `${graphContainerId}_wrapper`;
     const tooltipId = `${graphContainerId}_tooltip`;
     const labelsId = `${graphContainerId}_labels`;
+    const toggleId = `${graphContainerId}_mode`;
 
     return `
-            <div id="${esc(wrapperId)}" class="command-graph-wrapper">
-                <div id="${esc(graphContainerId)}" class="command-graph"></div>
-                <div id="${esc(labelsId)}" class="dot-label-layer" aria-hidden="true"></div>
-                <div id="${esc(tooltipId)}" class="command-tooltip" role="tooltip" aria-hidden="true"></div>
+            <div class="command-graph-block">
+                <div id="${esc(toggleId)}" class="graph-toggle" role="group" aria-label="Graph path view">
+                    <button type="button" class="graph-toggle__btn is-active" data-mode="execution">Execution path</button>
+                    <button type="button" class="graph-toggle__btn" data-mode="queue">Queue path</button>
+                </div>
+                <div id="${esc(wrapperId)}" class="command-graph-wrapper">
+                    <div id="${esc(graphContainerId)}" class="command-graph"></div>
+                    <div id="${esc(labelsId)}" class="dot-label-layer" aria-hidden="true"></div>
+                    <div id="${esc(tooltipId)}" class="command-tooltip" role="tooltip" aria-hidden="true"></div>
+                </div>
             </div>
             <script>
             (function() {
-                var nodes = new vis.DataSet(${JSON.stringify(nodes)});
-                var edges = new vis.DataSet(${JSON.stringify(edges)});
+                var datasets = {
+                    execution: {
+                        nodes: new vis.DataSet(${JSON.stringify(executionGraph.nodes)}),
+                        edges: new vis.DataSet(${JSON.stringify(executionGraph.edges)}),
+                        dotLabels: ${JSON.stringify(executionGraph.dotLabels)}
+                    },
+                    queue: {
+                        nodes: new vis.DataSet(${JSON.stringify(queueGraph.nodes)}),
+                        edges: new vis.DataSet(${JSON.stringify(queueGraph.edges)}),
+                        dotLabels: ${JSON.stringify(queueGraph.dotLabels)}
+                    }
+                };
                 var nodeTooltips = ${JSON.stringify(tooltipByNode)};
-                var dotLabels = ${JSON.stringify(dotLabels)};
-                var dotLabelIds = Object.keys(dotLabels);
                 var container = document.getElementById("${esc(graphContainerId)}");
                 var tooltip = document.getElementById("${esc(tooltipId)}");
                 var labelLayer = document.getElementById("${esc(labelsId)}");
-                var data = { nodes: nodes, edges: edges };
+                var currentMode = 'execution';
+                var dotLabels = datasets[currentMode].dotLabels;
+                var dotLabelIds = Object.keys(dotLabels);
+                var data = { nodes: datasets[currentMode].nodes, edges: datasets[currentMode].edges };
                 var options = {
                     height: '100%',
                     width: '100%',
@@ -1068,8 +1154,9 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 }
 
                 function renderDotLabels() {
-                    if (!labelLayer || !dotLabelIds.length) return;
+                    if (!labelLayer) return;
                     labelLayer.innerHTML = "";
+                    if (!dotLabelIds.length) return;
                     var positions = network.getPositions(dotLabelIds);
                     dotLabelIds.forEach(function(id) {
                         var pos = positions[id];
@@ -1113,6 +1200,34 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 network.on('dragStart', hideTooltip);
                 network.on('zoom', hideTooltip);
                 container.addEventListener('mouseleave', hideTooltip);
+
+                var toggleEl = document.getElementById("${esc(toggleId)}");
+                function updateToggleUI(mode) {
+                    if (!toggleEl) return;
+                    toggleEl.querySelectorAll('[data-mode]').forEach(function(btn) {
+                        var btnMode = btn.getAttribute('data-mode');
+                        btn.classList.toggle('is-active', btnMode === mode);
+                    });
+                }
+                function setMode(mode) {
+                    if (!datasets[mode]) return;
+                    currentMode = mode;
+                    dotLabels = datasets[mode].dotLabels || {};
+                    dotLabelIds = Object.keys(dotLabels);
+                    network.setData({ nodes: datasets[mode].nodes, edges: datasets[mode].edges });
+                    hideTooltip();
+                    updateToggleUI(mode);
+                    requestAnimationFrame(renderDotLabels);
+                }
+                if (toggleEl) {
+                    toggleEl.querySelectorAll('[data-mode]').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            var mode = this.getAttribute('data-mode');
+                            if (!mode || mode === currentMode) return;
+                            setMode(mode);
+                        });
+                    });
+                }
             })();
             </script>
         `;
