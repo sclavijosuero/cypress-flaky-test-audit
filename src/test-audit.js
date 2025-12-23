@@ -121,7 +121,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     }
 
 
-    const processCommand = ({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId, idAssertionCommandFailed }, resultsGraph = new Map()) => {
+    const processCommand = ({ currentTestIdAndRetry, commandEnqueuedData, prevCommandId, assertionCommandFailed }, resultsGraph = new Map()) => {
         // Return early if command enqueued data is missing or the command is missing
         if (!commandEnqueuedData || !commandEnqueuedData.command) return resultsGraph
 
@@ -129,9 +129,13 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const $command = commandEnqueuedData.command
         const id = runInfo.commandId
 
+        // console.log('......................................... command: start')
+        // console.log($command)
+        // console.log('......................................... command: end')
+
         const attributes = $command.attributes ? $command.attributes : $command
         let state = $command.state
-        if (attributes.type === 'assertion' && idAssertionCommandFailed === id) {
+        if (attributes.type === 'assertion' && assertionCommandFailed && assertionCommandFailed.id === id) {
             state = 'failed'
         } else if (attributes.type === 'assertion' && state === 'skipped') {
             state = 'passed'
@@ -197,11 +201,25 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
          * If the assertion will fail, that failure should be shown as a property of the assertion node,
          * not the query node. This logic ensures only the relevant assertion node gets a failed state.
          */
-        let idAssertionCommandThatWillFail
-        if (attributes.query && state === 'failed') {
-            idAssertionCommandThatWillFail = attributes.currentAssertionCommand?.attributes?.id
-            if (idAssertionCommandThatWillFail) {
-                state = 'passed'
+        const assertionCommandThatWillFail =
+            attributes.query && state === 'failed' && attributes.currentAssertionCommand?.attributes
+                ? { id: attributes.currentAssertionCommand.attributes.id, logs: attributes.currentAssertionCommand.attributes.logs }
+                : undefined;
+
+        let error
+        if (state === 'failed') {
+            const logs = attributes.logs || assertionCommandFailed?.logs
+            if (logs && logs.length > 0) {
+                // Use findLast to get the last error, but make sure we return the correct value (true/false) for matching
+                const found = logs.findLast((element) => {
+                    return element.attributes && element.attributes.error && element.attributes.error.hasFailed
+                });
+                if (found && found.attributes && found.attributes.error) {
+                    error = {
+                        codeFrame: found.attributes.error.codeFrame,
+                        message: found.attributes.error.message
+                    }
+                }
             }
         }
 
@@ -235,11 +253,18 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             nextQueuedCommandId,
             prevQueuedCommandId: undefined,
             nestedLevel: undefined,
+
+            error
         }
 
         resultsGraph.set(id, commandInfo)
 
-        return processCommand({ currentTestIdAndRetry, commandEnqueuedData: commandEnqueuedDataNext, prevCommandId: id, idAssertionCommandFailed: idAssertionCommandThatWillFail }, resultsGraph)
+        return processCommand({ 
+            currentTestIdAndRetry, 
+            commandEnqueuedData: commandEnqueuedDataNext, 
+            prevCommandId: id, 
+            assertionCommandFailed: assertionCommandThatWillFail 
+        }, resultsGraph)
     }
 
     const findNextCommandEnqueuedData = (currentTestIdAndRetry, currentCommandId) => {

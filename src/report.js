@@ -1120,14 +1120,36 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
 
     function buildTooltip(cmd, duration) {
         const argsText = cmd.args ? formatArgs(cmd.args) : '';
+        const state = (cmd?.state || '').toString();
+        const normalizedState = state.toLowerCase();
+        const errorObj = (cmd && typeof cmd.error === 'object' && cmd.error !== null) ? cmd.error : null;
+        const codeFrame = errorObj && typeof errorObj.codeFrame === 'object' && errorObj.codeFrame !== null ? errorObj.codeFrame : null;
+
+        let codeFrameDisplay = '';
+        if (normalizedState === 'failed' && codeFrame) {
+            const originalFile = codeFrame.originalFile ?? codeFrame.relativeFile ?? codeFrame.file ?? codeFrame.absoluteFile ?? '';
+            const line = codeFrame.line;
+            const column = codeFrame.column;
+            const lineText = (typeof line === 'number' && Number.isFinite(line)) ? String(line) : '-';
+            const columnText = (typeof column === 'number' && Number.isFinite(column)) ? String(column) : '-';
+            const fileText = originalFile ? String(originalFile) : '-';
+            codeFrameDisplay = `${fileText}:${lineText}:${columnText}`;
+        }
+
+        const messageDisplay = (normalizedState === 'failed' && errorObj && typeof errorObj.message === 'string' && errorObj.message.trim())
+            ? errorObj.message.trim()
+            : '';
+
         const info = [
             `<div><strong>Command:</strong> ${esc(cmd.name || 'command')}</div>`,
             argsText ? `<div><strong>Args:</strong> ${esc(argsText)}</div>` : '',
-            `<div><strong>State:</strong> ${esc(cmd.state || 'unknown')}</div>`,
+            `<div><strong>State:</strong> ${esc(state || 'unknown')}</div>`,
             cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
             `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
             `<div><strong>Execution order:</strong> ${esc(cmd.executionOrder ?? '-')}</div>`,
-            `<div><strong>Duration:</strong> ${esc(duration > 0 ? formatPreciseMilliseconds(duration) : 'n/a')}</div>`
+            `<div><strong>Duration:</strong> ${esc(duration > 0 ? formatPreciseMilliseconds(duration) : 'n/a')}</div>`,
+            (normalizedState === 'failed' && codeFrameDisplay) ? `<div><strong>CodeFrame:</strong> ${esc(codeFrameDisplay)}</div>` : '',
+            (normalizedState === 'failed' && messageDisplay) ? `<div><strong>Message:</strong> ${esc(messageDisplay)}</div>` : ''
         ];
         return info.filter(Boolean).join('');
     }

@@ -329,7 +329,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   it.skip('test skipped', () => {  // TEST FAIL
   })
 
-  // .only
+
   it('test 7.1.1', () => {  // TEST FAIL
     const timeToWait = 200;
 
@@ -351,8 +351,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
     cy.wait(timeToWait)
   })
-  // .only
-  it('test 7.2', () => {  // TEST PASS
+  
+  it.only('test 7.2', () => {  // TEST PASS
     const timeToWait = 200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
