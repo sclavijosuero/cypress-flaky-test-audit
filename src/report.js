@@ -819,6 +819,18 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         ? Object.fromEntries(resultsGraph)
         : { ...resultsGraph };
 
+    const commandSlownessThreshold = (() => {
+        try {
+            if (typeof Cypress !== 'undefined' && Cypress?.env) {
+                const value = Cypress.env('commandSlownessThreshold');
+                return typeof value === 'number' && Number.isFinite(value) ? value : 1500;
+            }
+        } catch (e) {
+            // ignore - fall back to default
+        }
+        return 1500;
+    })();
+
     const commandIds = Object.keys(commands);
     if (!commandIds.length) {
         return `<div id="${esc(graphContainerId)}" class="command-graph-wrapper"><div class="command-graph" style="display:flex;align-items:center;justify-content:center;color:#999;border:none;">No commands captured</div></div>`;
@@ -1122,6 +1134,23 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         const argsText = cmd.args ? formatArgs(cmd.args) : '';
         const state = (cmd?.state || '').toString();
         const normalizedState = state.toLowerCase();
+        const isSlowPassed = normalizedState === 'passed' && Number.isFinite(duration) && duration > commandSlownessThreshold;
+        const stateFlag = normalizedState === 'failed'
+            ? '❌'
+            : normalizedState === 'queued'
+                ? '⛔'
+                : isSlowPassed
+                    ? '⏳'
+                    : normalizedState === 'passed'
+                        ? '✔️'
+                        : '⛔';
+
+        const stateDisplay = normalizedState === 'queued'
+            ? 'queued (never run)'
+            : isSlowPassed
+                ? 'passed (slow)'
+                : (state || 'unknown');
+
         const errorObj = (cmd && typeof cmd.error === 'object' && cmd.error !== null) ? cmd.error : null;
         const codeFrame = errorObj && typeof errorObj.codeFrame === 'object' && errorObj.codeFrame !== null ? errorObj.codeFrame : null;
 
@@ -1143,7 +1172,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         const info = [
             `<div><strong>Command:</strong> ${esc(cmd.name || 'command')}</div>`,
             argsText ? `<div><strong>Args:</strong> ${esc(argsText)}</div>` : '',
-            `<div><strong>State:</strong> ${esc(state || 'unknown')}</div>`,
+            `<div><strong>State:</strong> ${esc(stateFlag)} ${esc(stateDisplay)}</div>`,
             cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
             `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
             `<div><strong>Execution order:</strong> ${esc(cmd.executionOrder ?? '-')}</div>`,
