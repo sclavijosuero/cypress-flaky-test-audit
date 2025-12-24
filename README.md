@@ -97,6 +97,20 @@ Set these keys via `cypress.config.{js,ts}` (as a property in the `module.export
 | --- | --- | --- | --- |
 | `testAuditFolder` *(Cypress config key)* | `string` | `cypress/reports/flaky-test-audit/` | Destination for generated HTML files. |
 
+Example `cypress.config.js`:
+
+```js
+module.exports = {
+  testAuditFolder: 'cypress/reports/flaky-test-audit/',
+
+  e2e: {
+    setupNodeEvents(on, config) {
+      // ...
+    },
+  },
+};
+```
+
 ### Environment Variables
 
 Set these keys via `cypress.config.{js,ts}` (`env` object), `cypress.env.json`, or CLI `--env` flags.
@@ -122,20 +136,6 @@ Example `cypress.env.json`:
 }
 ```
 
-
-Example `cypress.config.js`:
-
-```js
-module.exports = {
-  testAuditFolder: 'cypress/reports/flaky-test-audit/',
-
-  e2e: {
-    setupNodeEvents(on, config) {
-      // ...
-    },
-  },
-};
-```
 
 ## Audit Results
 
