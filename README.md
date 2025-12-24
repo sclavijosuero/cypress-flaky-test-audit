@@ -89,6 +89,14 @@ npm install --save-dev cypress-flaky-test-audit
 
 ## Configuration
 
+### Cypress Config File
+
+Set these keys via `cypress.config.{js,ts}` (as a property in the `module.exports`, or in the `e2e` object).
+
+| Config var | Type | Default | Description |
+| --- | --- | --- | --- |
+| `testAuditFolder` *(Cypress config key)* | `string` | `cypress/reports/flaky-test-audit/` | Destination for generated HTML files. |
+
 ### Environment Variables
 
 Set these keys via `cypress.config.{js,ts}` (`env` object), `cypress.env.json`, or CLI `--env` flags.
@@ -113,14 +121,6 @@ Example `cypress.env.json`:
   "commandSlownessThreshold": 2000
 }
 ```
-
-### Cypress Config File
-
-Set these keys via `cypress.config.{js,ts}` (as a property in the `module.exports`, or in the `e2e` object).
-
-| Config var | Type | Default | Description |
-| --- | --- | --- | --- |
-| `testAuditFolder` *(Cypress config key)* | `string` | `cypress/reports/flaky-test-audit/` | Destination for generated HTML files. |
 
 
 Example `cypress.config.js`:
@@ -230,7 +230,7 @@ Test Failed in retry #0.
 
 - Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder` (by default, this is `cypress/reports/flaky-test-audit/`).
 
-> You can download the latest example HTML report (showing Execution vs Queue paths and enriched failure tooltips) from [`cypress/reports/flaky-test-audit/flaky-demo2_2025-12-23T22-23-40.820Z.html`](cypress/reports/flaky-test-audit/flaky-demo2_2025-12-23T22-23-40.820Z.html).
+> You can download the latest example HTML report (showing Execution vs Queue paths and enriched failure tooltips) from [`assets/flaky-demo2_2025-12-24T21-12-14.996Z.html`](assets/flaky-demo2_2025-12-24T21-12-14.996Z.html).
 
 #### HTML report - Overview
 
