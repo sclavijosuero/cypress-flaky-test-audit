@@ -22,7 +22,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     //   .should('be.eq', 30)
     cy.log('1- afterEach')
   })
-  
+
   // afterEach(() => {
   //   cy.log('2- afterEach')
   // })
@@ -45,7 +45,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       .click() // ⛔ C.NEVER RUN
   })
 
-  it.only('test 1.2', () => {  // ❌ TEST FAIL 
+  it('test 1.2', () => {  // ❌ TEST FAIL 
     const timeToWait = 500;
 
     cy.get('#contact input[data-testid="ContactName"]').type('paul mcCartney', { delay: 200 })
@@ -230,7 +230,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
         cy.get('#contact button')
           .contains('Submit')
           .click()
-      }      
+      }
     })
 
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
@@ -351,7 +351,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
 
     cy.wait(timeToWait)
   })
-  
+
   it.only('test 7.2', () => {  // TEST PASS
     const timeToWait = 200;
 

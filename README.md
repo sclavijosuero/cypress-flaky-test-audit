@@ -29,12 +29,17 @@ Related reading: [The async nature of Cypress – don’t mess with the timeline
 
 ✔️ **Slowness Thresholds** – Highlight slow tests and commands with customizable performance budgets.
 
+✔️ **Richer Failure Context** – Failed command tooltips now surface both the code frame (file:line:column) and the underlying error message so you can jump straight to the root cause.
+
+✔️ **Dual Graph Views** – Toggle between **Execution path** (actual run order) and **Queue path** (enqueue order) directly in the report; queue edges render as dotted lines for clarity.
+
 ✔️ **Task-free HTML Export** – When enabled, automatically writes a timestamped HTML file per spec under `cypress/reports/flaky-test-audit/`, including:
 
    - **Suite overview**: Totals (tests, passes/failures), run duration, and metadata.
    - **Test & retry cards**: Per-test status plus a breakdown of each retry (retry index, start time, duration).
-   - **Fully interactive command graph (per retry)**: Zoomable/pannable network-style view of the command queue and execution flow, showing blocks nested relationships and state transitions.
-   - **Tooltips**: Inspect each command details on commnad click (type, runnable context, timings, internal retries).
+   - **Fully interactive command graph (per retry)**: Zoomable/pannable network-style view of the command queue and execution flow, showing nested relationships and state transitions.
+   - **Graph modes**: Switch between **Execution path** (nextCommandId links) and **Queue path** (queueInsertionOrder with dotted edges) to reason about run order vs enqueue order.
+   - **Tooltips**: Inspect each command’s type, runnable context, timings, internal retries, and (for failures) the exact code frame + error message.
    - **Visual cues**: Quickly spot failures, queued-but-never-run commands, and slow commands (based on your thresholds).
    - **Fully mobile responsive**: 100% responsive to mobile layouts.
 
@@ -134,7 +139,7 @@ module.exports = {
 
 ## Audit Results
 
-Depending on which outputs you enable, the audit data is presented in three different ways.
+Depending on which outputs you enable, the audit data is presented in three different ways: browser console, terminal console, HTML report.
 
 ### Browser Console
 
@@ -144,7 +149,11 @@ Depending on which outputs you enable, the audit data is presented in three diff
 
   * At the **Test** level, it shows a summary of that test **retry**:
   
-    1. State: `✔️ PASSED`, `✔️ PASSED (⏳ *slow*)` (duration longer than `testSlownessThreshold`), `❌ FAILED`, `⛔ QUEUED (*never run*)`.
+    1. Test state:
+       - `✔️ PASSED`
+       - `✔️ PASSED (⏳ *slow*)` (duration longer than `testSlownessThreshold`)
+       - `❌ FAILED`
+       - `⛔ QUEUED (*never run*)`.
     2. Test title.
     3. Retry number (when configured for multiple retries).
     4. Start time of the test retry.
@@ -212,43 +221,119 @@ Test Failed in retry #0.
   - For each retry in a test:
 
     - Retry number, start time, and duration.
-    - Fully interactive **command graph** (rendered via `vis-network`) that visualizes the execution timeline, nested executions, and state transitions.
-    - Graph supports zooming and panning.
-    - And provides per-command tooltips with execution details.
+    - A fully interactive **command graph** (rendered via `vis-network`) that visualizes the execution timeline, nested executions, and state transitions.
+    - **Execution path** view option that shows the real run order (solid edges), while **Queue path** shows enqueue order using dotted edges and queue insertion order.
+    - The graph supports zooming and panning.
+    - Per-command tooltips with execution details.
 
-- Written automatically when `createFlakyTestAuditReport` is **`true`**.
+- HTML report is written automatically when `createFlakyTestAuditReport` is **`true`**.
 
-- Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder`.
+- Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder` (by default, this is `cypress/reports/flaky-test-audit/`).
 
-> You can download an example HTML report of a flaky test audit from [this file](assets/Example-report-flaky-test-audit_2025-12-22T00-44-28.042Z.html).
+> You can download the latest example HTML report (showing Execution vs Queue paths and enriched failure tooltips) from [`cypress/reports/flaky-test-audit/flaky-demo2_2025-12-23T22-23-40.820Z.html`](cypress/reports/flaky-test-audit/flaky-demo2_2025-12-23T22-23-40.820Z.html).
 
 #### HTML report - Overview
 
+This is an overview of a Flaky Test Audit report, showing the suite header with metadata, the list of tests, and each retry that was run for every test.
+
 ![HTML report overview](assets/html-report-overview-placeholder.png)
 
-#### HTML report - Test passes on the first attempt and Cypress Command tooltip
+#### Commands, Assertions and Hooks
+
+The interactive command graph is designed to help you **read a test run at a glance**: what happened, what failed, what never ran, and where time was spent.
+
+- **Commands & queries** are displayed as **rectangles** in the graph.
+  - Inside each rectangle, you'll see the type of command or query (for example: VISIT, GET, etc.) along with how long it took to run.
+  - The **wider** the rectangle, the **more time** that command took to execute.
+- **Assertions** (like `.should()`) show up as **circles (dots)**, so they’re easy to spot in the flow.
+- **Colors mean the same thing everywhere** (commands, queries, assertions):
+  - **Green**: passed
+  - **Red**: failed
+  - **Gray**: enqueued (added to the Cypress queue) but **never executed**
+
+Commands, queries, and assertions that belong to the same block scope are shown as nested in the graph (indented to the right).
+
+**Hook commands** (`beforeEach()` / `afterEach()`) follow the same color rules, but are rendered **faded** so they stand out from the commands in the **test body**.
+
+For example, given this Cypress test code:
+
+![Cypress test code](assets/html-report-source-code-test.png)
+
+The graph below shows the exact order in which commands were executed, how long each took, and what their final state was after execution:
+
+![Commands, assertions, and hooks in the graph ](assets/html-report-commands-queries-assertions-hooks-state.png)
+
+The execution path shows that after the then() command, wait() is enqueued, but get() runs first because it's inside the then() block scope.
+
+> ⚠️ Commands that are part of a `before()` or `after()` hook might not be included in the test audit.
+
+#### Execution path VS Queued path
+
+For each retry executed, there are 2 visualizations of the test run: Execution path and Queued path.
+
+- **Execution path**: represents the order in which commands, queries, and assertions were actually **executed**.
+- **Queued path**: represents the order in which commands, queries, and assertions were **enqueued** (added to the Cypress command queue).
+
+Execution paths are represented with solid arrows in the graph, and enqueued paths with dotted arrows.
+
+These two orders are not always the same. Because Cypress commands are **queued asynchronously**, commands can be added from inside other command block scopes (for example within a `.then()` callback) or from within a **custom command** implementation. In those cases, Cypress may enqueue some commands later, even though they execute as part of the same overall flow, so the **execution order** and **enqueued order** can diverge.
+
+##### Execution path
+
+![Execution path (solid arrows)](assets/execution-path.png)
+
+##### Enqueued path
+
+![Enqueued path (dotted arrows)](assets/enqueued-path.png)
+
+#### Commands Tooltips and box width
+
+Each node in the graph is clickable. When you click a **command**, **query**, or **assertion**, the report opens a tooltip with the most relevant execution details for that node.
+
+- **How to open/close**
+  - **Open**: click on a node.
+  - **Close**: click on empty space, move the mouse inside the tooltip, or pan/zoom.
+
+- **Tooltip fields (always shown)**
+  - **Command**: the Cypress command name (e.g. `visit`, `get`, `should`).
+  - **Args**: shows the argument(s) passed to the Cypress command (for example, the selector string or typed value). If there are multiple arguments, all are shown in the order they were passed.
+  - **State**:
+    - `✔️ passed`
+    - `❌ failed`
+    - `⛔ queued (never run)` (when it was enqueued but never executed)
+    - `⏳ passed (slow)` (when it passed, but took longer than your `commandSlownessThreshold`)
+  - **Runnable type**: whether it ran in the **test body** (`test`) or inside a **hook** (`beforeEach`, `afterEach`).
+  - **Queue order**: The position at which the command was added to the Cypress command queue.
+  - **Execution order**: The position at which the command was actually executed during the test run.
+  - **Duration**: how long the command took to run (if it executed).
+
+- **Extra fields (only when the node failed)**
+  - **CodeFrame**: best-effort source location in the format `file:line:column`.
+  - **Message**: the underlying Cypress error message that caused the failure.
+
+- **Box width (rectangles)**
+  - **Rectangles scale with time**: wider boxes mean longer-running commands.
+  - **Assertions shown as circles** don’t use box width, but still carry the same tooltip details when clicked.
+
+![Failed command tooltip](assets/failed-command-tooltip.png)
+
+#### Examples of HTML Report
+
+##### Test passes on the first attempt
 
 ![Test passes on the first attempt and Cypress Command tooltip](assets/html-report-pass-tooltip-placeholder.png)
 
-#### HTML report - Test passes after one or more retries
+##### Test passes after one or more retries
 
 ![Test passes after one or more retries](assets/html-report-pass-retries-placeholder.png)
 
-#### HTML report - Test fails after all retries are exhausted
+##### Test fails after all retries are exhausted
 
 ![Test fails after all retries are exhausted](assets/html-report-fail-placeholder.png)
 
-#### HTML report - Fully mobile responsive
+##### Report fully mobile responsive
 
 ![ Fully mobile responsive](assets/html-report-mobile-responsive-placeholder.png)
-
-####  HTML report - Test hook commands and no retries configured
-
-Cypress commands that are part of `beforeEach()` and `afterEach()` hooks are shown in a faded color for clarity.
-
-> ⚠️ Commands that are part of a `before()` or `after()` hook are not included.
-
-![Test hook commands and no retries configured](assets/html-report-hooks-placeholder.png)
 
 
 ## License
