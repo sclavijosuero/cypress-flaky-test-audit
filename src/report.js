@@ -57,6 +57,13 @@ const trimToDecimals = (value, decimals = 3) => {
     return fixed.replace(/\.?0+$/, '');
 };
 
+const normalizeState = (value) => {
+    if (value === null || value === undefined) {
+        return '';
+    }
+    return String(value).toLowerCase();
+};
+
 const formatPreciseMilliseconds = (ms) => {
     if (!Number.isFinite(ms) || ms <= 0) return 'n/a';
     if (ms < 1000) return `${trimToDecimals(ms)} ms`;
@@ -1009,6 +1016,24 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             return node;
         });
 
+        const getCommandState = (cmd) => normalizeState(cmd?.state);
+        const shouldHighlightExecutionEdge = (fromCmd, toCmd) => {
+            if (!fromCmd || !toCmd) return false;
+            const fromState = getCommandState(fromCmd);
+            const toState = getCommandState(toCmd);
+            const fromFailed = fromState === 'failed';
+            const toFailed = toState === 'failed';
+            const fromQueued = fromState === 'queued';
+            const toQueued = toState === 'queued';
+            return (fromFailed && toFailed)
+                || (fromFailed && toQueued)
+                || (fromQueued && toQueued);
+        };
+        
+        const executionEdgeBaseColor = '#181a1b'; // darker light black
+        const queuedEdgeBaseColor = '#181a1b';
+        const executionEdgeHighlightColor = colorByState.failed || '#c62828';
+        const createEdgeColor = (colorHex) => ({ color: colorHex, highlight: colorHex });
         const edges = [];
         const queueEdgeKeys = new Set();
 
@@ -1021,7 +1046,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         from: fromId,
                         to: toId,
                         arrows: 'to',
-                        color: '#1976d2',
+                        color: createEdgeColor(queuedEdgeBaseColor),
                         width: 2,
                         dashes: true,
                         smooth: {
@@ -1032,25 +1057,16 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 }
             }
         } else {
+            const queuedEdges = [];
+            const executionEdges = [];
             queueOrderedIds.forEach(id => {
                 const cmd = commands[id];
-                if (cmd.nextCommandId && commands[cmd.nextCommandId]) {
-                    const fromLevel = getNestedLevel(cmd);
-                    const toLevel = getNestedLevel(commands[cmd.nextCommandId]);
-                    const roundness = toLevel > fromLevel ? 0.3 : toLevel < fromLevel ? 0.05 : 0.15;
-                    edges.push({
-                        from: id,
-                        to: cmd.nextCommandId,
-                        arrows: 'to',
-                        color: '#1976d2',
-                        width: 2,
-                        smooth: {
-                            type: 'cubicBezier',
-                            roundness
-                        }
-                    });
-                }
+                const nextCmd = cmd.nextCommandId ? commands[cmd.nextCommandId] : null;
+                const fromLevel = getNestedLevel(cmd);
+                const toLevel = getNestedLevel(nextCmd);
+                const roundness = toLevel > fromLevel ? 0.3 : toLevel < fromLevel ? 0.05 : 0.15;
                 const prevQueuedId = cmd.prevQueuedCommandId;
+
                 if (prevQueuedId && commands[prevQueuedId]) {
                     const prevLevel = getNestedLevel(commands[prevQueuedId]);
                     const currentLevel = getNestedLevel(cmd);
@@ -1058,22 +1074,40 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         const key = prevQueuedId + '->' + id;
                         if (!queueEdgeKeys.has(key)) {
                             queueEdgeKeys.add(key);
-                            edges.push({
+                            queuedEdges.push({
                                 from: prevQueuedId,
                                 to: id,
                                 arrows: 'to',
-                                color: '#90a4ae',
+                                color: createEdgeColor(queuedEdgeBaseColor),
                                 dashes: true,
-                                width: 1.5,
+                                width: 1,
                                 smooth: {
                                     type: 'cubicBezier',
-                                    roundness: 0.15
+                                    roundness
                                 }
                             });
                         }
                     }
                 }
+
+                if (nextCmd) {
+                    const highlightEdge = shouldHighlightExecutionEdge(cmd, nextCmd);
+                    const edgeColor = highlightEdge ? executionEdgeHighlightColor : executionEdgeBaseColor;
+                    executionEdges.push({
+                        from: id,
+                        to: cmd.nextCommandId,
+                        arrows: 'to',
+                        color: createEdgeColor(edgeColor),
+                        width: highlightEdge ? 3 : 2,
+                        smooth: {
+                            type: 'cubicBezier',
+                            roundness
+                        }
+                    });
+                }
             });
+            queuedEdges.forEach(edge => edges.push(edge));
+            executionEdges.forEach(edge => edges.push(edge));
         }
 
         return { nodes, edges, dotLabels };
@@ -1136,7 +1170,8 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         zoomView: true
                     },
                     edges: {
-                        smooth: true
+                        smooth: true,
+                        selectionWidth: 0
                     }
                 };
                 var network = new vis.Network(container, data, options);

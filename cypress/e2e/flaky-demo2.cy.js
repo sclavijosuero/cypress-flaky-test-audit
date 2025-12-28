@@ -21,6 +21,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // cy.wrap(10)
     //   .should('be.eq', 30)
     cy.log('1- afterEach')
+    cy.wrap(10).should('be.eq', 30)
+    cy.wrap(20).should('be.eq', 20)
   })
 
   // afterEach(() => {
@@ -199,7 +201,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
 
   //---------------------------------------------------------------------
-  it.only('test 2.1 - now has a much longer test title that is longer than the previous test title to see how it looks in the report', () => {  // ⏳ TEST PASS SLOW
+  it('test 2.1 - now has a much longer test title that is longer than the previous test title to see how it looks in the report', () => {  // ⏳ TEST PASS SLOW
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
@@ -214,7 +216,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ⏳ C.PASS SLOW
   })
 
-  it.only('test 2.2', () => {  // ❌ TEST FAIL
+  it('test 2.2', () => {  // ❌ TEST FAIL
     const timeToWait = 1200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
@@ -352,7 +354,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait)
   })
 
-  it.only('test 7.2', () => {  // TEST PASS
+  it('test 7.2', () => {  // TEST PASS
     const timeToWait = 200;
 
     cy.get('#contact input[data-testid="ContactName"]').type('ringo starr') // ✔️ PASS
