@@ -1049,10 +1049,11 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         color: createEdgeColor(queuedEdgeBaseColor),
                         width: 2,
                         dashes: true,
-                        smooth: {
-                            type: 'cubicBezier',
-                            roundness: 0.12
-                        }
+                        smooth: false,
+                        // smooth: {
+                        //     type: 'cubicBezier',
+                        //     roundness: 0.12
+                        // }
                     });
                 }
             }
@@ -1081,10 +1082,11 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                                 color: createEdgeColor(queuedEdgeBaseColor),
                                 dashes: true,
                                 width: 1,
-                                smooth: {
-                                    type: 'cubicBezier',
-                                    roundness
-                                }
+                                smooth: false,
+                                // smooth: {
+                                //     type: 'cubicBezier',
+                                //     roundness
+                                // }
                             });
                         }
                     }
@@ -1099,10 +1101,11 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         arrows: 'to',
                         color: createEdgeColor(edgeColor),
                         width: highlightEdge ? 3 : 2,
-                        smooth: {
-                            type: 'cubicBezier',
-                            roundness
-                        }
+                        smooth: false,
+                        // smooth: {
+                        //     type: 'cubicBezier',
+                        //     roundness
+                        // }
                     });
                 }
             });
@@ -1170,7 +1173,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         zoomView: true
                     },
                     edges: {
-                        smooth: true,
+                        smooth: false,
                         selectionWidth: 0
                     }
                 };

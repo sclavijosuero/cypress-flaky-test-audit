@@ -245,7 +245,9 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             duration,
             durationPerformance,
             retries: runInfo.retries,
+            
             queueInsertionOrder: runInfo.queueInsertionOrder,
+
             executionOrder: runInfo.executionOrder,
             nextCommandId,
             prevCommandId,

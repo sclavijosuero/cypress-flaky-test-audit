@@ -326,6 +326,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
       })
 
     cy.wait(timeToWait)
+    cy.wrap(50).should('be.eq', 50)
   })
 
   it.skip('test skipped', () => {  // TEST FAIL
