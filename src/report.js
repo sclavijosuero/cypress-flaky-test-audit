@@ -64,6 +64,60 @@ const normalizeState = (value) => {
     return String(value).toLowerCase();
 };
 
+const hookRunnableNames = new Set(['before each', 'after each', 'before', 'after']);
+
+const formatHookLabel = (cmd) => {
+    if (!cmd) return 'Hook';
+    const base = (cmd.runnableType || 'hook').toString();
+    const hookId = cmd.hookId;
+    if (hookId) {
+        return `${base} (${hookId})`;
+    }
+    return base;
+};
+
+const getRunnableGrouping = (cmd) => {
+    if (!cmd) {
+        return { kind: 'unknown', key: 'unknown', label: 'Unknown' };
+    }
+    const runnableType = (cmd.runnableType || '').toString();
+    const normalizedType = runnableType.toLowerCase();
+    const hookId = cmd.hookId;
+    const isHook = Boolean(hookId) || hookRunnableNames.has(normalizedType);
+    if (isHook) {
+        const key = hookId ? `hook:${hookId}` : `hook:${normalizedType || 'unknown'}`;
+        return { kind: 'hook', key, label: formatHookLabel(cmd) };
+    }
+    if (normalizedType === 'test') {
+        return { kind: 'test', key: 'test', label: 'Test' };
+    }
+    const key = normalizedType || 'other';
+    const label = runnableType || 'Other';
+    return { kind: 'other', key, label };
+};
+
+const shouldSeparateGroups = (prevGroup, nextGroup) => {
+    if (!prevGroup || !nextGroup) return false;
+    if (prevGroup.kind === 'hook' && nextGroup.kind === 'hook') {
+        return prevGroup.key !== nextGroup.key;
+    }
+    const isPrevHook = prevGroup.kind === 'hook';
+    const isNextHook = nextGroup.kind === 'hook';
+    const isPrevTest = prevGroup.kind === 'test';
+    const isNextTest = nextGroup.kind === 'test';
+    if ((isPrevHook && isNextTest) || (isPrevTest && isNextHook)) {
+        return true;
+    }
+    return false;
+};
+
+const buildSeparatorLabel = (prevGroup, nextGroup) => {
+    const left = prevGroup?.label || 'Previous';
+    const right = nextGroup?.label || 'Next';
+    if (left === right) return left;
+    return `${left} → ${right}`;
+};
+
 const formatPreciseMilliseconds = (ms) => {
     if (!Number.isFinite(ms) || ms <= 0) return 'n/a';
     if (ms < 1000) return `${trimToDecimals(ms)} ms`;
@@ -803,6 +857,33 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             white-space:nowrap;
             transform: translateY(-50%);
         }
+         .graph-separator-layer {
+             position: absolute;
+             inset: 0;
+             pointer-events: none;
+             font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+             color: #94a3b8;
+             font-size: 11px;
+         }
+         .graph-separator-layer__line {
+             position: absolute;
+             left: 0;
+             right: 0;
+             border-top: 1px dashed rgba(15, 23, 42, 0.25);
+         }
+         .graph-separator-layer__label {
+             position: absolute;
+             left: 12px;
+             padding: 2px 8px;
+             border-radius: 999px;
+             background: rgba(15,23,42,0.85);
+             color: #cbd5f5;
+             text-transform: uppercase;
+             letter-spacing: 0.12em;
+             font-size: 10px;
+             transform: translateY(-90%);
+             box-shadow: 0 4px 12px rgba(15,23,42,0.25);
+         }
         .command-tooltip {
             position: absolute;
             display: none;
@@ -844,7 +925,6 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
 </html>
     `;
 }
-
 
 
 // Utility function to escape HTML
@@ -949,6 +1029,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         const dotLabels = {};
         const isQueueMode = mode === 'queue';
         const orderingMap = isQueueMode ? queueIndexById : orderIndexById;
+        const nodeYById = {};
         const nodes = queueOrderedIds.map(id => {
             const cmd = commands[id];
             const queueIndex = queueIndexById[id];
@@ -984,6 +1065,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             const nodeX = nestedLevel * identNestedLevel;
             const orderIndex = orderingMap[id] ?? queueIndex ?? 0;
             const nodeY = nodeBaseY + orderIndex * verticalSpacing;
+            nodeYById[id] = nodeY;
             const tooltipHtml = buildTooltip(cmd, duration);
             const nodeFontColor = isNonTestRunnable ? '#0b1220' : '#fff';
             const nodeFontSize = shouldRenderAsBox ? 18 : 11;
@@ -1113,7 +1195,39 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             executionEdges.forEach(edge => edges.push(edge));
         }
 
-        return { nodes, edges, dotLabels };
+        const separators = (() => {
+            const orderedIds = queueOrderedIds
+                .slice()
+                .sort((a, b) => {
+                    const orderA = orderingMap[a] ?? queueIndexById[a] ?? 0;
+                    const orderB = orderingMap[b] ?? queueIndexById[b] ?? 0;
+                    return orderA - orderB;
+                });
+            const result = [];
+            let prevId = null;
+            let prevGroup = null;
+            orderedIds.forEach(id => {
+                const currentCmd = commands[id];
+                const currentGroup = getRunnableGrouping(currentCmd);
+                if (prevId && shouldSeparateGroups(prevGroup, currentGroup)) {
+                    const prevY = nodeYById[prevId];
+                    const currentY = nodeYById[id];
+                    if (Number.isFinite(prevY) && Number.isFinite(currentY)) {
+                        result.push({
+                            y: prevY + (currentY - prevY) / 2,
+                            from: prevGroup,
+                            to: currentGroup,
+                            label: buildSeparatorLabel(prevGroup, currentGroup)
+                        });
+                    }
+                }
+                prevId = id;
+                prevGroup = currentGroup;
+            });
+            return result;
+        })();
+
+        return { nodes, edges, dotLabels, separators };
     };
 
     const executionGraph = buildGraphData('execution');
@@ -1121,6 +1235,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     const wrapperId = `${graphContainerId}_wrapper`;
     const tooltipId = `${graphContainerId}_tooltip`;
     const labelsId = `${graphContainerId}_labels`;
+    const separatorsId = `${graphContainerId}_separators`;
     const toggleId = `${graphContainerId}_mode`;
 
     return `
@@ -1131,6 +1246,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 </div>
                 <div id="${esc(wrapperId)}" class="command-graph-wrapper">
                     <div id="${esc(graphContainerId)}" class="command-graph"></div>
+                    <div id="${esc(separatorsId)}" class="graph-separator-layer" aria-hidden="true"></div>
                     <div id="${esc(labelsId)}" class="dot-label-layer" aria-hidden="true"></div>
                     <div id="${esc(tooltipId)}" class="command-tooltip" role="tooltip" aria-hidden="true"></div>
                 </div>
@@ -1141,18 +1257,25 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                     execution: {
                         nodes: new vis.DataSet(${JSON.stringify(executionGraph.nodes)}),
                         edges: new vis.DataSet(${JSON.stringify(executionGraph.edges)}),
-                        dotLabels: ${JSON.stringify(executionGraph.dotLabels)}
+                        dotLabels: ${JSON.stringify(executionGraph.dotLabels)},
+                        separators: ${JSON.stringify(executionGraph.separators)}
                     },
                     queue: {
                         nodes: new vis.DataSet(${JSON.stringify(queueGraph.nodes)}),
                         edges: new vis.DataSet(${JSON.stringify(queueGraph.edges)}),
-                        dotLabels: ${JSON.stringify(queueGraph.dotLabels)}
+                        dotLabels: ${JSON.stringify(queueGraph.dotLabels)},
+                        separators: ${JSON.stringify(queueGraph.separators)}
                     }
+                };
+                var separatorsByMode = {
+                    execution: datasets.execution.separators || [],
+                    queue: datasets.queue.separators || []
                 };
                 var nodeTooltips = ${JSON.stringify(tooltipByNode)};
                 var container = document.getElementById("${esc(graphContainerId)}");
                 var tooltip = document.getElementById("${esc(tooltipId)}");
                 var labelLayer = document.getElementById("${esc(labelsId)}");
+                var separatorLayer = document.getElementById("${esc(separatorsId)}");
                 var currentMode = 'execution';
                 var dotLabels = datasets[currentMode].dotLabels;
                 var dotLabelIds = Object.keys(dotLabels);
@@ -1180,10 +1303,11 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 var network = new vis.Network(container, data, options);
                 network.once('afterDrawing', function () {
                     network.fit({ animation: false });
+                    renderOverlays();
                 });
-                network.on('afterDrawing', renderDotLabels);
-                network.on('zoom', renderDotLabels);
-                network.on('dragEnd', renderDotLabels);
+                network.on('afterDrawing', renderOverlays);
+                network.on('zoom', renderOverlays);
+                network.on('dragEnd', renderOverlays);
 
                 function hideTooltip() {
                     if (!tooltip) return;
@@ -1196,16 +1320,52 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                     labelLayer.innerHTML = "";
                     if (!dotLabelIds.length) return;
                     var positions = network.getPositions(dotLabelIds);
+                    var scale = typeof network.getScale === 'function' ? network.getScale() : 1;
+                    var effectiveScale = Math.min(Math.max(scale, 0.55), 2.4);
+                    var baseFontSize = 18;
+                    var fontSize = baseFontSize * effectiveScale;
+                    var nodeDataSet = datasets[currentMode] && datasets[currentMode].nodes;
                     dotLabelIds.forEach(function(id) {
                         var pos = positions[id];
                         if (!pos) return;
                         var domPos = network.canvasToDOM(pos);
                         var labelEl = document.createElement('span');
                         labelEl.textContent = dotLabels[id];
-                        labelEl.style.left = (domPos.x + 14) + 'px';
+                        labelEl.style.fontSize = fontSize + 'px';
+                        var nodeData = nodeDataSet ? nodeDataSet.get(id) : null;
+                        var nodeSize = (nodeData && typeof nodeData.size === 'number') ? nodeData.size : 14;
+                        var offset = (nodeSize + 6) * effectiveScale;
+                        labelEl.style.left = (domPos.x + offset) + 'px';
                         labelEl.style.top = domPos.y + 'px';
                         labelLayer.appendChild(labelEl);
                     });
+                }
+
+                function renderSeparators() {
+                    if (!separatorLayer) return;
+                    separatorLayer.innerHTML = "";
+                    var separators = separatorsByMode[currentMode] || [];
+                    if (!separators.length) return;
+                    separators.forEach(function(separator) {
+                        if (!separator || typeof separator.y !== 'number') return;
+                        var domPos = network.canvasToDOM({ x: 0, y: separator.y });
+                        var line = document.createElement('div');
+                        line.className = 'graph-separator-layer__line';
+                        line.style.top = domPos.y + 'px';
+                        separatorLayer.appendChild(line);
+                        if (separator.label) {
+                            var label = document.createElement('div');
+                            label.className = 'graph-separator-layer__label';
+                            label.textContent = separator.label;
+                            label.style.top = domPos.y + 'px';
+                            separatorLayer.appendChild(label);
+                        }
+                    });
+                }
+
+                function renderOverlays() {
+                    renderSeparators();
+                    renderDotLabels();
                 }
 
                 network.on('click', function(params) {
@@ -1255,7 +1415,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                     network.setData({ nodes: datasets[mode].nodes, edges: datasets[mode].edges });
                     hideTooltip();
                     updateToggleUI(mode);
-                    requestAnimationFrame(renderDotLabels);
+                    requestAnimationFrame(renderOverlays);
                 }
                 if (toggleEl) {
                     toggleEl.querySelectorAll('[data-mode]').forEach(function(btn) {
@@ -1284,6 +1444,16 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     }
 
     function buildTooltip(cmd, duration) {
+        // cmd is the commandInfo object with the following properties:
+        // - name: the name of the command
+        // - args: the arguments of the command
+        // - state: the state of the command
+        // - error: the error object
+        // - queueInsertionOrder: the queue insertion order of the command
+        // - executionOrder: the execution order of the command
+        // - runnableType: the runnable type of the command
+        // - hookId: the hook id of the command
+
         const argsText = cmd.args ? formatArgs(cmd.args) : '';
         const state = (cmd?.state || '').toString();
         const normalizedState = state.toLowerCase();
@@ -1327,6 +1497,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             argsText ? `<div><strong>Args:</strong> ${esc(argsText)}</div>` : '',
             `<div><strong>State:</strong> ${esc(stateFlag)} ${esc(stateDisplay)}</div>`,
             cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
+            cmd?.hookId ? `<div><strong>Hook ID:</strong> ${esc(cmd.hookId)}</div>` : '',
             `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
             `<div><strong>Execution order:</strong> ${esc(cmd.executionOrder ?? '-')}</div>`,
             `<div><strong>Duration:</strong> ${esc(duration > 0 ? formatPreciseMilliseconds(duration) : 'n/a')}</div>`,

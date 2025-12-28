@@ -46,6 +46,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
                 enqueuedTimePerformance: performance.now() - testAudit.testStartTimePerformance,
                 queueInsertionOrder: testAudit.commandsEnqueued.size + 1,
                 runnableType: runnable.type === 'hook' ? runnable.hookName : runnable.type,
+                hookId: runnable.type === 'hook' ? runnable.hookId : undefined,
             },
         })
     });

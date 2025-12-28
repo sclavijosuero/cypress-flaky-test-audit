@@ -24,9 +24,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
     // ----------------------------------------------------------------------------------
     afterEach(() => {
-
         // Only run the test audit is configured as such
-
 
         const test = cy.state().test
         const currentTestId = test.id
@@ -232,6 +230,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             type: attributes.type,
             query: attributes.query,
             runnableType: runInfo.runnableType,
+            hookId: runInfo.hookId,
             state,
 
             currentAssertionCommand: attributes.currentAssertionCommand,
@@ -245,7 +244,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
             duration,
             durationPerformance,
             retries: runInfo.retries,
-            
+
             queueInsertionOrder: runInfo.queueInsertionOrder,
 
             executionOrder: runInfo.executionOrder,

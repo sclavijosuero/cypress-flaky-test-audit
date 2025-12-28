@@ -12,7 +12,12 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   // })
 
   beforeEach(() => {
+    cy.log('1- beforeEach')
     cy.visit('https://automationintesting.online/')
+  })
+  beforeEach(() => {
+    cy.log('2- beforeEach')
+    cy.log('2.1- beforeEach')
   })
 
   afterEach(() => {
@@ -21,8 +26,18 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // cy.wrap(10)
     //   .should('be.eq', 30)
     cy.log('1- afterEach')
-    cy.wrap(10).should('be.eq', 30)
-    cy.wrap(20).should('be.eq', 20)
+    // cy.wrap(10).should('be.eq', 30, { timeout: 1000 })
+    cy.wrap(20).should('be.eq', 20, { timeout: 1000 })
+  })
+  
+  afterEach(() => {
+    // cy.wrap(20)
+    //   .should('be.eq', 20)
+    // cy.wrap(10)
+    //   .should('be.eq', 30)
+    cy.log('2- afterEach')
+    cy.wrap(100).should('be.eq', 300, { timeout: 1000 })
+    cy.wrap(200).should('be.eq', 200, { timeout: 1000 })
   })
 
   // afterEach(() => {
@@ -312,21 +327,21 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
           .then(() => {
             if (Cypress.currentRetry == 0) {
               cy.url()
-                .should('include', 'NOT-MY-PAGE')
+                .should('include', 'NOT-MY-PAGE', { timeout: 1000 })
             }
             else {
               cy.url()
-                .should('include', '/automationintesting.online')
+                .should('include', '/automationintesting.online', { timeout: 1000 })
             }
           })
 
         cy.get('somethingnotfound')
-          .should('be.visible')
-          .and('have.css', 'color', 'red')
+          .should('be.visible', { timeout: 1000 })
+          .and('have.css', 'color', 'red', { timeout: 1000 })
       })
 
     cy.wait(timeToWait)
-    cy.wrap(50).should('be.eq', 50)
+    cy.wrap(50).should('be.eq', 50, { timeout: 1000 })
   })
 
   it.skip('test skipped', () => {  // TEST FAIL
