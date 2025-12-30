@@ -17,10 +17,12 @@ describe('Flaky Suite', { tags: ['@flaky-demo'] }, () => {
     })
     beforeEach(() => { // It will pass
         cy.log('2- beforeEach')
+        cy.wait(1100)
     })
 
     afterEach(() => { // Hook will pass
         cy.wrap(20).should('be.eq', 20, { timeout: 1000 })
+        cy.wait(1500)
     })
 
     afterEach(() => { // ❌ Hook will fail
@@ -31,7 +33,7 @@ describe('Flaky Suite', { tags: ['@flaky-demo'] }, () => {
     // This test does not follow Cypress best practices (actually follows many bad practices),
     // but that's the point, it is used to demonstrate the flaky test audit report.
     it.only('Test Sample - It will fail', () => {  // ❌ Test will fail
-        cy.get('#contact input[data-testid="ContactName"]').type('John Wick')
+        cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 })
 
         // Using .then() for demo purposes, but normally you would use .click() directly
         cy.get('#contact button')
@@ -52,7 +54,7 @@ describe('Flaky Suite', { tags: ['@flaky-demo'] }, () => {
                           }
                     })
 
-                cy.get('where is johnny?')  // This would fail in the initial ran,m but never reached, so in the first retry this will be the point of failure
+                cy.get('where-is-johnny')  // This would fail in the initial ran,m but never reached, so in the first retry this will be the point of failure
                     .should('be.visible', { timeout: 1000 })
                     .and('have.css', 'color', 'red', { timeout: 1000 })
             })

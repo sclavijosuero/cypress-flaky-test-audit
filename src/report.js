@@ -13,6 +13,7 @@ const colorByState = {
     failed: '#c62828',
     pending: '#f9a825'
 };
+const slowCommandColor = '#c87c04';
 
 const emphasizeColor = (hexColor, factor = 0.35) => {
     if (typeof hexColor !== 'string' || !/^#([0-9a-f]{6})$/i.test(hexColor)) {
@@ -1098,7 +1099,14 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
 
             const isSkippedAssertion = cmd?.type === 'assertion' && cmd?.state === 'skipped';
             const nodeStateKey = isSkippedAssertion ? 'passed' : cmd.state;
+            const normalizedState = (nodeStateKey || '').toString().toLowerCase();
+            const isSlowPassed = normalizedState === 'passed'
+                && Number.isFinite(duration)
+                && duration > commandSlownessThreshold;
             let nodeColor = colorByState[nodeStateKey] || '#546e7a';
+            if (isSlowPassed) {
+                nodeColor = slowCommandColor;
+            }
             const isNonTestRunnable = cmd?.runnableType && cmd.runnableType !== 'test';
             if (isNonTestRunnable) {
                 nodeColor = emphasizeColor(nodeColor, 0.6);
