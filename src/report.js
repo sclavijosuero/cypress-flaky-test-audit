@@ -888,20 +888,53 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             position: absolute;
             display: none;
             max-width: 360px;
-            padding: 10px 12px;
-            border-radius: 12px;
-            background: rgba(15,23,42,0.98);
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(15,23,42,0.97);
             color: #fff;
             font-size: 12px;
-            line-height: 1.5;
+            line-height: 1.4;
             pointer-events: crosshair;
             box-shadow: 0 16px 40px rgba(15,23,42,0.4);
             z-index: 5;
         }
-        .command-tooltip strong {
-            display: inline-block;
-            min-width: 90px;
+        .command-tooltip__section {
+            padding: 8px 0;
+            border-top: 1px solid rgba(148,163,184,0.18);
+        }
+        .command-tooltip__section:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+        .command-tooltip__section:last-child {
+            padding-bottom: 0;
+        }
+        .command-tooltip__row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .command-tooltip__section .command-tooltip__row:last-child {
+            margin-bottom: 0;
+        }
+        .command-tooltip__label {
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-size: 10px;
+            color: #9fb3d1;
             font-weight: 600;
+            white-space: nowrap;
+            flex: 0 0 120px;
+        }
+        .command-tooltip__value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #e2e8f0;
+            line-height: 1.3;
+            word-break: break-word;
+            white-space: pre-wrap;
+            flex: 1 1 auto;
         }
         .empty-state {
             padding: 20px;
@@ -1431,6 +1464,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         `;
 
     function formatArgs(args) {
+        const argsMaxLength = 55;
         if (!Array.isArray(args) || !args.length) return '';
         let rendered;
         const formatter = Utils && Utils.formatCommandArgs;
@@ -1440,7 +1474,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             rendered = JSON.stringify(args);
         }
         const normalized = typeof rendered === 'string' ? rendered : JSON.stringify(rendered);
-        return normalized.length > 42 ? normalized.slice(0, 39) + '…' : normalized;
+        return normalized.length > argsMaxLength ? normalized.slice(0, argsMaxLength - 3) + '…' : normalized;
     }
 
     function buildTooltip(cmd, duration) {
@@ -1492,20 +1526,58 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             ? errorObj.message.trim()
             : '';
 
-        const info = [
-            `<div><strong>Command:</strong> ${esc(cmd.name || 'command')}</div>`,
-            argsText ? `<div><strong>Args:</strong> ${esc(argsText)}</div>` : '',
-            `<div><strong>State:</strong> ${esc(stateFlag)} ${esc(stateDisplay)}</div>`,
-            cmd?.retries ? `<div><strong>Internal retries:</strong> ${esc(cmd.retries)}</div>` : '',
-            cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
-            cmd?.hookId ? `<div><strong>Hook ID:</strong> ${esc(cmd.hookId)}</div>` : '',
-            `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
-            `<div><strong>Execution order:</strong> ${esc(cmd.executionOrder ?? '-')}</div>`,
-            `<div><strong>Duration:</strong> ${esc(duration > 0 ? formatPreciseMilliseconds(duration) : 'n/a')}</div>`,
-            (normalizedState === 'failed' && codeFrameDisplay) ? `<div><strong>CodeFrame:</strong> ${esc(codeFrameDisplay)}</div>` : '',
-            (normalizedState === 'failed' && messageDisplay) ? `<div><strong>Message:</strong> ${esc(messageDisplay)}</div>` : ''
-        ];
-        return info.filter(Boolean).join('');
+        const renderTooltipRow = (label, value) => {
+            if (value === null || value === undefined) return '';
+            const valueString = typeof value === 'string' ? value : String(value);
+            if (valueString === '') return '';
+            return `
+                <div class="command-tooltip__row">
+                    <div class="command-tooltip__label">${esc(label)}</div>
+                    <div class="command-tooltip__value">${esc(valueString)}</div>
+                </div>
+            `;
+        };
+
+        const stateCombined = `${stateFlag} ${stateDisplay}`.trim();
+        const primarySection = [
+            renderTooltipRow('Command', cmd.name || 'command'),
+            argsText ? renderTooltipRow('Args', argsText) : '',
+            renderTooltipRow('State', stateCombined),
+            cmd?.retries ? renderTooltipRow('Internal retries', cmd.retries) : ''
+        ].filter(Boolean);
+
+        const metaSection = [
+            cmd?.runnableType ? renderTooltipRow('Runnable type', cmd.runnableType) : '',
+            cmd?.hookId ? renderTooltipRow('Hook ID', cmd.hookId) : '',
+            renderTooltipRow('Queue order', cmd.queueInsertionOrder ?? '-'),
+            renderTooltipRow('Execution order', cmd.executionOrder ?? '-'),
+            renderTooltipRow('Duration', duration > 0 ? formatPreciseMilliseconds(duration) : 'n/a')
+        ].filter(Boolean);
+
+        const errorSection = [];
+        if (normalizedState === 'failed' && codeFrameDisplay) {
+            errorSection.push(renderTooltipRow('CodeFrame', codeFrameDisplay));
+        }
+        if (normalizedState === 'failed' && messageDisplay) {
+            errorSection.push(renderTooltipRow('Message', messageDisplay));
+        }
+
+        const buildSection = (rows) => {
+            if (!rows.length) return '';
+            return `
+                <div class="command-tooltip__section">
+                    ${rows.join('')}
+                </div>
+            `;
+        };
+
+        const sections = [
+            buildSection(primarySection),
+            buildSection(metaSection),
+            buildSection(errorSection)
+        ].filter(Boolean);
+
+        return sections.join('');
     }
 }
 
