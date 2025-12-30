@@ -644,6 +644,11 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
         .retry-grid.single {
             grid-template-columns: 1fr;
         }
+        @media (max-width: 1024px) {
+            .retry-grid.multi {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
         .retry-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -783,6 +788,35 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             box-shadow: 0 8px 18px rgba(14,165,233,0.32);
             border: 1px solid rgba(14,165,233,0.45);
         }
+         .graph-toolbar {
+             display: flex;
+             align-items: center;
+             gap: 12px;
+             flex-wrap: wrap;
+             justify-content: space-between;
+         }
+         .graph-fit-btn {
+             border: none;
+             border-radius: 999px;
+             background: rgba(15,23,42,0.85);
+             color: #e0f2fe;
+             font-size: 12px;
+             letter-spacing: 0.1em;
+             padding: 8px 14px;
+             cursor: pointer;
+             display: inline-flex;
+             align-items: center;
+             gap: 8px;
+             box-shadow: 0 10px 18px rgba(15,23,42,0.25);
+             transition: transform 150ms ease, opacity 150ms ease;
+         }
+         .graph-fit-btn:hover:not(:disabled) {
+             transform: translateY(-1px);
+         }
+         .graph-fit-btn:disabled {
+             opacity: 0.5;
+             cursor: default;
+         }
         .command-graph-wrapper {
             background: #fff;
             border: 1px solid #e2e8f0;
@@ -1252,12 +1286,19 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     const labelsId = `${graphContainerId}_labels`;
     const separatorsId = `${graphContainerId}_separators`;
     const toggleId = `${graphContainerId}_mode`;
+    const fitBtnId = `${graphContainerId}_fit`;
 
     return `
             <div class="command-graph-block">
-                <div id="${esc(toggleId)}" class="graph-toggle" role="group" aria-label="Graph path view">
-                    <button type="button" class="graph-toggle__btn is-active" data-mode="execution">Execution path</button>
-                    <button type="button" class="graph-toggle__btn" data-mode="queue">Queue path</button>
+                <div class="graph-toolbar">
+                    <div id="${esc(toggleId)}" class="graph-toggle" role="group" aria-label="Graph path view">
+                        <button type="button" class="graph-toggle__btn is-active" data-mode="execution">Execution path</button>
+                        <button type="button" class="graph-toggle__btn" data-mode="queue">Queue path</button>
+                    </div>
+                    <button type="button" class="graph-fit-btn" id="${esc(fitBtnId)}" aria-label="Fit graph to view">
+                        <span aria-hidden="true">⤢</span>
+                        <span>Fit graph</span>
+                    </button>
                 </div>
                 <div id="${esc(wrapperId)}" class="command-graph-wrapper">
                     <div id="${esc(graphContainerId)}" class="command-graph"></div>
@@ -1291,6 +1332,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 var tooltip = document.getElementById("${esc(tooltipId)}");
                 var labelLayer = document.getElementById("${esc(labelsId)}");
                 var separatorLayer = document.getElementById("${esc(separatorsId)}");
+                var fitBtn = document.getElementById("${esc(fitBtnId)}");
                 var currentMode = 'execution';
                 var dotLabels = datasets[currentMode].dotLabels;
                 var dotLabelIds = Object.keys(dotLabels);
@@ -1440,6 +1482,20 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                             setMode(mode);
                         });
                     });
+                }
+                function handleFitClick() {
+                    if (!network) return;
+                    hideTooltip();
+                    network.fit({
+                        animation: {
+                            duration: 350,
+                            easingFunction: 'easeOutCubic'
+                        }
+                    });
+                    requestAnimationFrame(renderOverlays);
+                }
+                if (fitBtn) {
+                    fitBtn.addEventListener('click', handleFitClick);
                 }
             })();
             </script>

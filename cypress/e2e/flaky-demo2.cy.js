@@ -17,7 +17,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
   })
   beforeEach(() => {
     cy.log('2- beforeEach')
-    cy.log('2.1- beforeEach')
+    // cy.log('2.1- beforeEach')
   })
 
   afterEach(() => {
@@ -25,7 +25,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     //   .should('be.eq', 20)
     // cy.wrap(10)
     //   .should('be.eq', 30)
-    cy.log('1- afterEach')
+    // cy.log('1- afterEach')
     // cy.wrap(10).should('be.eq', 30, { timeout: 1000 })
     cy.wrap(20).should('be.eq', 20, { timeout: 1000 })
   })
@@ -36,8 +36,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // cy.wrap(10)
     //   .should('be.eq', 30)
     cy.log('2- afterEach')
-    cy.wrap(100).should('be.eq', 300, { timeout: 1000 })
-    cy.wrap(200).should('be.eq', 200, { timeout: 1000 })
+    cy.wrap(100).should('be.eq', 300, { timeout: 1000 }) //.and('have.class', 'form-control', { timeout: 1000 })
+    // cy.wrap(200) .should('be.eq', 200, { timeout: 1000 })
   })
 
   // afterEach(() => {
@@ -312,6 +312,7 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait) // ⛔ NEVER RUN
   })
 
+
   it.only('test 7.1', () => {  // ❌ TEST FAIL
     const timeToWait = 200;
 
@@ -322,6 +323,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.get('#contact button')
       .contains('Submit')
       .then($button => {
+        cy.thisIsCustomCommand()
+
         cy.wrap($button)
           .click()
           .then(() => {
@@ -343,6 +346,13 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     cy.wait(timeToWait)
     cy.wrap(50).should('be.eq', 50, { timeout: 1000 })
   })
+
+  Cypress.Commands.add('thisIsCustomCommand', () => {
+    // This is a custom command for demonstration purposes
+    cy.log('thisIsCustomCommand has been called!')
+    cy.wrap('a').should('be.eq', 'a')
+  })
+
 
   it.skip('test skipped', () => {  // TEST FAIL
   })
