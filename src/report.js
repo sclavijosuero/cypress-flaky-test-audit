@@ -1496,6 +1496,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             `<div><strong>Command:</strong> ${esc(cmd.name || 'command')}</div>`,
             argsText ? `<div><strong>Args:</strong> ${esc(argsText)}</div>` : '',
             `<div><strong>State:</strong> ${esc(stateFlag)} ${esc(stateDisplay)}</div>`,
+            cmd?.retries ? `<div><strong>Internal retries:</strong> ${esc(cmd.retries)}</div>` : '',
             cmd?.runnableType ? `<div><strong>Runnable type:</strong> ${esc(cmd.runnableType)}</div>` : '',
             cmd?.hookId ? `<div><strong>Hook ID:</strong> ${esc(cmd.hookId)}</div>` : '',
             `<div><strong>Queue order:</strong> ${esc(cmd.queueInsertionOrder ?? '-')}</div>`,
