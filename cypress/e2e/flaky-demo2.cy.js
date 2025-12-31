@@ -26,8 +26,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // cy.wrap(10)
     //   .should('be.eq', 30)
     // cy.log('1- afterEach')
-    // cy.wrap(10).should('be.eq', 30, { timeout: 1000 })
-    cy.wrap(20).should('be.eq', 20, { timeout: 1000 })
+    // cy.wrap(10).should('be.eq', 30)
+    cy.wrap(20).should('be.eq', 20)
   })
   
   afterEach(() => {
@@ -36,8 +36,8 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
     // cy.wrap(10)
     //   .should('be.eq', 30)
     cy.log('2- afterEach')
-    cy.wrap(100).should('be.eq', 300, { timeout: 1000 }) //.and('have.class', 'form-control', { timeout: 1000 })
-    // cy.wrap(200) .should('be.eq', 200, { timeout: 1000 })
+    cy.wrap(100).should('be.eq', 300) //.and('have.class', 'form-control')
+    // cy.wrap(200) .should('be.eq', 200)
   })
 
   // afterEach(() => {
@@ -330,21 +330,21 @@ describe('Something', { tags: ['@plugin', '@flaky-demo'] }, () => {
           .then(() => {
             if (Cypress.currentRetry == 0) {
               cy.url()
-                .should('include', 'NOT-MY-PAGE', { timeout: 1000 })
+                .should('include', 'NOT-MY-PAGE')
             }
             else {
               cy.url()
-                .should('include', '/automationintesting.online', { timeout: 1000 })
+                .should('include', '/automationintesting.online')
             }
           })
 
         cy.get('somethingnotfound')
-          .should('be.visible', { timeout: 1000 })
-          .and('have.css', 'color', 'red', { timeout: 1000 })
+          .should('be.visible')
+          .and('have.css', 'color', 'red')
       })
 
     cy.wait(timeToWait)
-    cy.wrap(50).should('be.eq', 50, { timeout: 1000 })
+    cy.wrap(50).should('be.eq', 50)
   })
 
   Cypress.Commands.add('thisIsCustomCommand', () => {

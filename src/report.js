@@ -112,6 +112,15 @@ const shouldSeparateGroups = (prevGroup, nextGroup) => {
     return false;
 };
 
+const isHookTestBoundary = (prevGroup, nextGroup) => {
+    if (!prevGroup || !nextGroup) return false;
+    const isPrevHook = prevGroup.kind === 'hook';
+    const isNextHook = nextGroup.kind === 'hook';
+    const isPrevTest = prevGroup.kind === 'test';
+    const isNextTest = nextGroup.kind === 'test';
+    return (isPrevHook && isNextTest) || (isPrevTest && isNextHook);
+};
+
 const buildSeparatorLabel = (prevGroup, nextGroup) => {
     const left = prevGroup?.label || 'Previous';
     const right = nextGroup?.label || 'Next';
@@ -906,6 +915,10 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
              right: 0;
              border-top: 1px dashed rgba(15, 23, 42, 0.25);
          }
+         .graph-separator-layer__line--highlight {
+             border-top-width: 2px;
+             border-top-color: rgba(15, 23, 42, 0.55);
+         }
          .graph-separator-layer__label {
              position: absolute;
              left: 12px;
@@ -1274,7 +1287,8 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                             y: prevY + (currentY - prevY) / 2,
                             from: prevGroup,
                             to: currentGroup,
-                            label: buildSeparatorLabel(prevGroup, currentGroup)
+                            label: buildSeparatorLabel(prevGroup, currentGroup),
+                            highlight: isHookTestBoundary(prevGroup, currentGroup)
                         });
                     }
                 }
@@ -1415,7 +1429,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         if (!separator || typeof separator.y !== 'number') return;
                         var domPos = network.canvasToDOM({ x: 0, y: separator.y });
                         var line = document.createElement('div');
-                        line.className = 'graph-separator-layer__line';
+                        line.className = 'graph-separator-layer__line' + (separator.highlight ? ' graph-separator-layer__line--highlight' : '');
                         line.style.top = domPos.y + 'px';
                         separatorLayer.appendChild(line);
                         if (separator.label) {

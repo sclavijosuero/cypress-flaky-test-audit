@@ -23,6 +23,9 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
     // ----------------------------------------------------------------------------------
     // MAIN AFTER EACH FUNCTION FOR TEST AUTIT
     // ----------------------------------------------------------------------------------
+
+    // Collect the test audit result for each test retry after the run.
+    // Also display in the browser console and terminal the result of each test retry
     afterEach(() => {
         // Only run the test audit is configured as such
 
@@ -82,6 +85,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
     })
 
+    // Create the html report for all test and retries executed in the suite
     after(() => {
         if (Cypress.env('createFlakyTestAuditReport') === true || Cypress.env('createFlakyTestAuditReport') === 'true') {
             // If the report is configured to be created, create it
