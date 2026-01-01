@@ -230,10 +230,24 @@ const createSuiteAuditHtmlReport = (spec, testAuditResults) => {
 }
 
 
-const getTestStatusDisplay = (status) => {
+const getTestStatusDisplay = (testData) => {
+    const status = testData?.testStatus;
     const normalized = typeof status === 'string' ? status.toLowerCase() : '';
+    const retries = Array.isArray(testData?.retriesInfo)
+        ? testData.retriesInfo.filter(Boolean)
+        : [];
+    const previousAttempts = retries.slice(0, -1);
+    const hadPreviousAttempts = previousAttempts.length > 0;
+    const hadPreviousFailures = previousAttempts.some(retry => {
+        const retryStatus = (retry?.retryStatus || '').toLowerCase();
+        return retryStatus !== 'passed';
+    });
+    const passedAfterRetries = normalized === 'passed' && hadPreviousAttempts && hadPreviousFailures;
     switch (normalized) {
         case 'passed':
+            if (passedAfterRetries) {
+                return { label: 'Passed', className: 'test-status--passed-retry', flag: '✔' };
+            }
             return { label: 'Passed', className: 'test-status--passed', flag: '✔' };
         case 'failed':
             return { label: 'Failed', className: 'test-status--failed', flag: '✖' };
@@ -292,7 +306,7 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
     // testAuditResults: Map of testId (string) => {testTitle, maxRetries, retriesInfo}
     let testIdx = 0;
     for (const [testId, testData] of testAuditResults.entries()) {
-        const statusDisplay = getTestStatusDisplay(testData.testStatus);
+        const statusDisplay = getTestStatusDisplay(testData);
         const testDurationMs = getTestDurationMs(testData);
         const testDurationDisplay = formatDuration(testDurationMs);
         let testHtml = `
@@ -624,6 +638,17 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             background: rgba(34,197,94,0.25);
             color: #14532d;
         }
+        .quick-stat--status.test-status--passed-retry {
+            background: rgba(251,191,36,0.18);
+            border-color: rgba(251,146,60,0.4);
+        }
+        .quick-stat--status.test-status--passed-retry .quick-stat__value {
+            color: #b45309;
+        }
+        .quick-stat--status.test-status--passed-retry .quick-stat__icon {
+            background: rgba(251,191,36,0.3);
+            color: #92400e;
+        }
         .quick-stat--status.test-status--failed {
             background: rgba(239,68,68,0.12);
             border-color: rgba(239,68,68,0.35);
@@ -798,13 +823,19 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
             box-shadow: 0 8px 18px rgba(14,165,233,0.32);
             border: 1px solid rgba(14,165,233,0.45);
         }
-         .graph-toolbar {
-             display: flex;
-             align-items: center;
-             gap: 12px;
-             flex-wrap: wrap;
-             justify-content: space-between;
-         }
+        .graph-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        .graph-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+        }
          .graph-fit-btn {
              border: none;
              border-radius: 999px;
@@ -825,6 +856,35 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
          }
          .graph-fit-btn:disabled {
              opacity: 0.5;
+             cursor: default;
+         }
+         .graph-order-toggle {
+             border: 1px solid rgba(148,163,184,0.4);
+             border-radius: 999px;
+             background: rgba(241,245,249,0.95);
+             color: #0f172a;
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 6px 10px;
+             cursor: pointer;
+             display: inline-flex;
+             align-items: center;
+             gap: 6px;
+             box-shadow: 0 6px 12px rgba(15,23,42,0.1);
+             transition: transform 150ms ease, opacity 150ms ease;
+         }
+         .graph-order-toggle:hover:not(:disabled) {
+             transform: translateY(-1px);
+         }
+        .graph-order-toggle.is-active {
+            background: rgba(15,23,42,0.85);
+            color: #e0f2fe;
+            border-color: rgba(15,23,42,0.85);
+            box-shadow: 0 6px 14px rgba(15,23,42,0.25);
+         }
+         .graph-order-toggle:disabled {
+             opacity: 0.6;
              cursor: default;
          }
         .command-graph-wrapper {
@@ -915,9 +975,9 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
              right: 0;
              border-top: 1px dashed rgba(15, 23, 42, 0.25);
          }
-         .graph-separator-layer__line--highlight {
-             border-top-width: 2px;
-             border-top-color: rgba(15, 23, 42, 0.55);
+        .graph-separator-layer__line--highlight {
+            border-top-width: 2.25px;
+            border-top-color: rgba(15, 23, 42, 0.7);
          }
          .graph-separator-layer__label {
              position: absolute;
@@ -929,9 +989,33 @@ const createSuiteAuditHtml = (spec, testAuditResults) => {
              text-transform: uppercase;
              letter-spacing: 0.12em;
              font-size: 10px;
-             transform: translateY(-90%);
+             transform: translateY(-50%);
              box-shadow: 0 4px 12px rgba(15,23,42,0.25);
          }
+        .order-badge-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #fff;
+        }
+        .order-badge {
+            position: absolute;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(226, 232, 240, 0.95);
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            border-radius: 999px;
+            padding: 1px 8px;
+            color: #0f172a;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            transform: translate(-100%, -50%);
+            transform-origin: right center;
+            box-shadow: 0 6px 16px rgba(15,23,42,0.2);
+        }
         .command-tooltip {
             position: absolute;
             display: none;
@@ -1093,6 +1177,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
         const isQueueMode = mode === 'queue';
         const orderingMap = isQueueMode ? queueIndexById : orderIndexById;
         const nodeYById = {};
+        const orderBadges = {};
         const nodes = queueOrderedIds.map(id => {
             const cmd = commands[id];
             const queueIndex = queueIndexById[id];
@@ -1163,6 +1248,13 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                 node.label = '';
                 node.font = { face: 'monospace', color: '#263238', align: 'left' };
                 dotLabels[id] = labelParts.join(' ');
+            }
+
+            if (!isQueueMode) {
+                const queueOrderValue = Number(cmd?.queueInsertionOrder);
+                if (Number.isFinite(queueOrderValue)) {
+                    orderBadges[id] = queueOrderValue;
+                }
             }
 
             return node;
@@ -1298,7 +1390,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
             return result;
         })();
 
-        return { nodes, edges, dotLabels, separators };
+        return { nodes, edges, dotLabels, separators, orderBadges };
     };
 
     const executionGraph = buildGraphData('execution');
@@ -1307,7 +1399,9 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     const tooltipId = `${graphContainerId}_tooltip`;
     const labelsId = `${graphContainerId}_labels`;
     const separatorsId = `${graphContainerId}_separators`;
+    const orderBadgesId = `${graphContainerId}_order_badges`;
     const toggleId = `${graphContainerId}_mode`;
+    const orderToggleId = `${graphContainerId}_order_toggle`;
     const fitBtnId = `${graphContainerId}_fit`;
 
     return `
@@ -1317,14 +1411,21 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         <button type="button" class="graph-toggle__btn is-active" data-mode="execution">Execution path</button>
                         <button type="button" class="graph-toggle__btn" data-mode="queue">Queue path</button>
                     </div>
-                    <button type="button" class="graph-fit-btn" id="${esc(fitBtnId)}" aria-label="Fit graph to view">
-                        <span aria-hidden="true">⤢</span>
-                        <span>Fit graph</span>
-                    </button>
+                    <div class="graph-actions">
+                        <button type="button" class="graph-order-toggle" id="${esc(orderToggleId)}" aria-pressed="false">
+                            <span aria-hidden="true">#</span>
+                            <span>Show queue order</span>
+                        </button>
+                        <button type="button" class="graph-fit-btn" id="${esc(fitBtnId)}" aria-label="Fit graph to view">
+                            <span aria-hidden="true">⤢</span>
+                            <span>Fit graph</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="${esc(wrapperId)}" class="command-graph-wrapper">
                     <div id="${esc(graphContainerId)}" class="command-graph"></div>
                     <div id="${esc(separatorsId)}" class="graph-separator-layer" aria-hidden="true"></div>
+                    <div id="${esc(orderBadgesId)}" class="order-badge-layer" aria-hidden="true"></div>
                     <div id="${esc(labelsId)}" class="dot-label-layer" aria-hidden="true"></div>
                     <div id="${esc(tooltipId)}" class="command-tooltip" role="tooltip" aria-hidden="true"></div>
                 </div>
@@ -1336,26 +1437,36 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                         nodes: new vis.DataSet(${JSON.stringify(executionGraph.nodes)}),
                         edges: new vis.DataSet(${JSON.stringify(executionGraph.edges)}),
                         dotLabels: ${JSON.stringify(executionGraph.dotLabels)},
-                        separators: ${JSON.stringify(executionGraph.separators)}
+                        separators: ${JSON.stringify(executionGraph.separators)},
+                        orderBadges: ${JSON.stringify(executionGraph.orderBadges)}
                     },
                     queue: {
                         nodes: new vis.DataSet(${JSON.stringify(queueGraph.nodes)}),
                         edges: new vis.DataSet(${JSON.stringify(queueGraph.edges)}),
                         dotLabels: ${JSON.stringify(queueGraph.dotLabels)},
-                        separators: ${JSON.stringify(queueGraph.separators)}
+                        separators: ${JSON.stringify(queueGraph.separators)},
+                        orderBadges: ${JSON.stringify(queueGraph.orderBadges)}
                     }
                 };
                 var separatorsByMode = {
                     execution: datasets.execution.separators || [],
                     queue: datasets.queue.separators || []
                 };
+                var orderBadgesByMode = {
+                    execution: datasets.execution.orderBadges || {},
+                    queue: datasets.queue.orderBadges || {}
+                };
                 var nodeTooltips = ${JSON.stringify(tooltipByNode)};
                 var container = document.getElementById("${esc(graphContainerId)}");
                 var tooltip = document.getElementById("${esc(tooltipId)}");
                 var labelLayer = document.getElementById("${esc(labelsId)}");
                 var separatorLayer = document.getElementById("${esc(separatorsId)}");
+                var orderBadgeLayer = document.getElementById("${esc(orderBadgesId)}");
                 var fitBtn = document.getElementById("${esc(fitBtnId)}");
+                var orderToggleBtn = document.getElementById("${esc(orderToggleId)}");
+                var orderToggleLabel = orderToggleBtn ? orderToggleBtn.querySelector('span:last-child') : null;
                 var currentMode = 'execution';
+                var showOrderBadges = false;
                 var dotLabels = datasets[currentMode].dotLabels;
                 var dotLabelIds = Object.keys(dotLabels);
                 var data = { nodes: datasets[currentMode].nodes, edges: datasets[currentMode].edges };
@@ -1442,9 +1553,37 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                     });
                 }
 
+                function renderOrderBadges() {
+                    if (!orderBadgeLayer) return;
+                    orderBadgeLayer.innerHTML = "";
+                    if (!showOrderBadges || currentMode !== 'execution') return;
+                    var badgeMap = orderBadgesByMode[currentMode] || {};
+                    var badgeIds = Object.keys(badgeMap);
+                    if (!badgeIds.length || !network) return;
+                    var scale = typeof network.getScale === 'function' ? network.getScale() : 1;
+                    var boundedScale = Math.max(0.45, Math.min(1.8, scale));
+                    badgeIds.forEach(function(id) {
+                        var value = badgeMap[id];
+                        if (value === null || value === undefined) return;
+                        var bbox = network.getBoundingBox(id);
+                        if (!bbox || typeof bbox.left !== 'number') return;
+                        var anchorX = bbox.left - 8;
+                        var anchorY = (bbox.top + bbox.bottom) / 2;
+                        var domPos = network.canvasToDOM({ x: anchorX, y: anchorY });
+                        var badge = document.createElement('span');
+                        badge.className = 'order-badge';
+                        badge.textContent = value;
+                        badge.style.left = domPos.x + 'px';
+                        badge.style.top = domPos.y + 'px';
+                        badge.style.transform = 'translate(-100%, -50%) scale(' + boundedScale + ')';
+                        orderBadgeLayer.appendChild(badge);
+                    });
+                }
+
                 function renderOverlays() {
                     renderSeparators();
                     renderDotLabels();
+                    renderOrderBadges();
                 }
 
                 network.on('click', function(params) {
@@ -1494,6 +1633,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                     network.setData({ nodes: datasets[mode].nodes, edges: datasets[mode].edges });
                     hideTooltip();
                     updateToggleUI(mode);
+                    updateOrderToggle();
                     requestAnimationFrame(renderOverlays);
                 }
                 if (toggleEl) {
@@ -1516,9 +1656,32 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
                     });
                     requestAnimationFrame(renderOverlays);
                 }
+                function updateOrderToggle() {
+                    if (!orderToggleBtn) return;
+                    var isExecution = currentMode === 'execution';
+                    orderToggleBtn.disabled = !isExecution;
+                    orderToggleBtn.style.display = isExecution ? 'inline-flex' : 'none';
+                    orderToggleBtn.setAttribute('aria-hidden', isExecution ? 'false' : 'true');
+                    var isActive = showOrderBadges && isExecution;
+                    orderToggleBtn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                    orderToggleBtn.classList.toggle('is-active', isActive);
+                    if (orderToggleLabel) {
+                        orderToggleLabel.textContent = isActive ? 'Hide queue order' : 'Show queue order';
+                    }
+                }
+                function handleOrderToggle() {
+                    if (!orderToggleBtn || currentMode !== 'execution') return;
+                    showOrderBadges = !showOrderBadges;
+                    updateOrderToggle();
+                    renderOrderBadges();
+                }
                 if (fitBtn) {
                     fitBtn.addEventListener('click', handleFitClick);
                 }
+                if (orderToggleBtn) {
+                    orderToggleBtn.addEventListener('click', handleOrderToggle);
+                }
+                updateOrderToggle();
             })();
             </script>
         `;

@@ -41,7 +41,7 @@ afterEach(() => { // ❌ Hook will fail
 
 // This test does not follow Cypress best practices (actually follows many bad practices),
 // but that's the point, it is used to demonstrate the flaky test audit report.
-it('Test Sample 2 - It will fail (if multiple retries configured, then in different places each retry)', () => {  // ❌ Test will fail
+it('Test Sample 2 - It will fail (if multiple retries configured, it will fail in different places each retry)', () => {  // ❌ Test will fail
   cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 })
 
   // Using .then() for demo purposes, but normally you would use .click() directly

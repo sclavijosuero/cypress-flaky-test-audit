@@ -107,15 +107,7 @@ const testDataAsString = ({ test, testSlownessThreshold, testStartTime }) => {
 
     const currentRetry = test._retries > 0 ? ` | (#Test retry: ${test._currentRetry})` : ''
 
-    // console.log('-----------------------------------------------------------')
-    // console.log(Cypress.state())
-    // console.log(Cypress.spec)
-    // console.log(test)
-    // console.log(test.invocationDetails)
-    // console.log(test.parent)
-    // console.log(test.parent.invocationDetails)
-
-    const relativeFile = Cypress.spec.relativeFile
+    const relativeFile = Cypress.spec.relative
 
     const testDataStr = `
 ------------------------------------------------------------------------------------------------------------------------------

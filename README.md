@@ -169,7 +169,7 @@ Depending on which outputs you enable, the audit data is presented in three diff
         - **`❌ FAILED`**: The command caused the test to fail.
         - **`⛔ QUEUED (*never run*)`**: The command was added to the Cypress queue but never run.
       
-    2. **`Runnable type`**: Where the command ran: in a **hook** (`before each`, `after each`) or in the main `test` **body**.
+    2. **`Runnable type`**: Where the command ran: in a **hook** (`before`, `before each`, `after each`) or in the main `test` **body**.
     3. **`Type`**: The nature of the Cypress command (**Query**, **Parent command**, **Child command**, or **Dual Command**).
     4. **`Command`**: The command being executed with its call arguments (e.g., `VISIT ('https://automationintesting.online/')`).
     5. **`Enqueued order`**: The order in which the command is added to the Cypress queue.
@@ -223,14 +223,14 @@ Test Failed in retry #0.
     - Retry number, start time, and duration.
     - A fully interactive **command graph** (rendered via `vis-network`) that visualizes the execution timeline, nested executions, and state transitions.
     - **Execution path** view option that shows the real run order (solid edges), while **Queue path** shows enqueue order using dotted edges and queue insertion order.
-    - The graph supports zooming and panning.
+    - The graph supports zooming, panning, and fitting the entire graph within the visible area.
     - Per-command tooltips with execution details.
 
 - HTML report is written automatically when `createFlakyTestAuditReport` is **`true`**.
 
 - Files are saved as `<spec-name>_<timestamp>.html` in the folder specified by the Cypress config variable `testAuditFolder` (by default, this is `cypress/reports/flaky-test-audit/`).
 
-> You can download the latest example HTML report (showing Execution vs Queue paths and enriched failure tooltips) from [`assets/flaky-demo2_2025-12-24T21-12-14.996Z.html`](assets/flaky-demo2_2025-12-24T21-12-14.996Z.html).
+> You can download the latest example HTML report (showing Execution vs Queue paths and enriched failure tooltips) from [`assets/flaky-demo.html`](assets/flaky-demo.html).
 
 #### HTML report - Overview
 
@@ -238,7 +238,7 @@ This is an overview of a Flaky Test Audit report, showing the suite header with 
 
 ![HTML report overview](assets/html-report-overview-placeholder.png)
 
-#### Commands, Assertions and Hooks
+#### Commands and Assertions
 
 The interactive command graph is designed to help you **read a test run at a glance**: what happened, what failed, what never ran, and where time was spent.
 
@@ -248,12 +248,16 @@ The interactive command graph is designed to help you **read a test run at a gla
 - **Assertions** (like `.should()`) show up as **circles (dots)**, so they’re easy to spot in the flow.
 - **Colors mean the same thing everywhere** (commands, queries, assertions):
   - **Green**: passed
+  - **Orange**: passed but command execution time was more than the `commandSlownessThreshold`
   - **Red**: failed
   - **Gray**: enqueued (added to the Cypress queue) but **never executed**
 
-Commands, queries, and assertions that belong to the same block scope are shown as nested in the graph (indented to the right).
+Commands, queries, and assertions that belong to the same block scope are shown as nested in the graph (indented).
 
-**Hook commands** (`beforeEach()` / `afterEach()`) follow the same color rules, but are rendered **faded** so they stand out from the commands in the **test body**.
+#### Hooks
+
+Cypress commands that run inside **hooks** (`before`, `beforeEach()`, or `afterEach()`) use the same color rules as commands in the test body, but are shown with a **faded appearance** to distinguish them from the main test commands. 
+In the graph, each hook and the test body are placed in separate sections, divided by dotted lines and labeled, making it easy to tell them apart.
 
 For example, given this Cypress test code:
 
@@ -263,9 +267,17 @@ The graph below shows the exact order in which commands were executed, how long 
 
 ![Commands, assertions, and hooks in the graph ](assets/html-report-commands-queries-assertions-hooks-state.png)
 
-The execution path shows that after the then() command, wait() is enqueued, but get() runs first because it's inside the then() block scope.
+The execution path shows that just after the `then()` command, `wait()` is enqueued, but `get()` runs first because it's inside the `then()` block scope.
 
-> ⚠️ Commands that are part of a `before()` or `after()` hook might not be included in the test audit.
+> ⚠️ **IMPORTANT CONSIDERATIONS ABOUT HOW HOOKS ARE SHOWN IN THE TEST AUDIT PLUGIN**
+>
+> Audit data for each test retry is recorded using an `afterEach()` **hook**, imported at the top of your `e2e.js` file (by `import 'cypress-flaky-test-audit'`). The HTML audit report for the entire suite is generated in an `after()` **hook** it is also defined in that same import.
+>
+> This means that, depending on which block scope your hooks are defined in your suite file and how Cypress determines hook order, hooks may or may not appear in the test audit reports (both in the console and in the graphs):
+>   - `before()` hooks defined in your suite will always be shown for retry #0 of the suite's first test.
+>   - `after()` hooks defined in your suite will never be shown in the results.
+>   - `beforeEach()` and `afterEach()` hooks defined *inside a block scope* (like within a `describe()` or `context()`) will always be shown in the results.
+>   - `beforeEach()` and `afterEach()` hooks defined *at the root level of your file* (not wrapped by `describe()` or `context()`) will never be shown in the results.
 
 #### Execution path VS Queued path
 
@@ -278,7 +290,10 @@ Execution paths are represented with solid arrows in the graph, and enqueued pat
 
 These two orders are not always the same. Because Cypress commands are **queued asynchronously**, commands can be added from inside other command block scopes (for example within a `.then()` callback) or from within a **custom command** implementation. In those cases, Cypress may enqueue some commands later, even though they execute as part of the same overall flow, so the **execution order** and **enqueued order** can diverge.
 
+
 ##### Execution path
+
+To help you see the difference between executed and enqueued commands, the Execution Path graph includes a toggle called **# SHOW QUEUE ORDER**. Turning this on or off will show or hide a label next to each command or assertion, indicating the position at which it was added to the Cypress command queue.
 
 ![Execution path (solid arrows)](assets/execution-path.png)
 

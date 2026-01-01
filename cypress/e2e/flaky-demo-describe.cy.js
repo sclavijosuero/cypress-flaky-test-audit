@@ -21,29 +21,29 @@ describe('Flaky Suite', { tags: ['@flaky-demo'] }, () => {
     cy.log('after')
   })
   
-  beforeEach(() => { // Hook will pass
+  beforeEach(() => {
     cy.log('1- beforeEach')
     cy.visit('https://automationintesting.online/')
   })
-  beforeEach(() => { // It will pass
+  beforeEach(() => {
     cy.log('2- beforeEach')
     cy.wait(1100)
   })
 
-  afterEach(() => { // Hook will pass
+  afterEach(() => {
     cy.wrap(20).should('be.eq', 20)
     cy.wait(1500)
   })
 
-  afterEach(() => { // ❌ Hook will fail
+  afterEach(() => {
     cy.log('2- afterEach')
-    // cy.wrap(100).should('be.eq', 300)
     cy.wrap(100).should('be.eq', 100)
+    // cy.wrap(100).should('be.eq', 300)
   })
 
   // This test does not follow Cypress best practices (actually follows many bad practices),
   // but that's the point, it is used to demonstrate the flaky test audit report.
-  it('Test Sample 2 - It will fail (if multiple retries configured, then in different places each retry)', () => {  // ❌ Test will fail
+  it('Test Sample 1 - It will fail (if multiple retries configured, it will fail in different places each retry)', () => {  // ❌ Test will fail
     cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 })
 
     // Using .then() for demo purposes, but normally you would use .click() directly
@@ -74,9 +74,29 @@ describe('Flaky Suite', { tags: ['@flaky-demo'] }, () => {
     cy.wrap(50).should('be.eq', 50)
   })
 
-  it('Test Sample 1 - It will pass', () => {  // ⏳ TEST PASS SLOW
-    cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 }) // ⏳ C.PASS SLOW
-    cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 }) // ✔️ C.PASS
+  it('Test Sample 2 - It will past in the first retry', () => {
+    cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 })
+    cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 })
+
+    cy.then(() => {
+      if (Cypress.currentRetry == 0) {
+        cy.get('#contact button')
+          .contains('Submityyyyy')
+          .click()
+      }
+      else {
+        cy.get('#contact button')
+          .contains('Submit')
+          .click()
+      }
+    })
+
+    cy.wait(1200)
+  })
+
+  it('Test Sample 3 - It will pass', () => {  // ⏳ TEST PASS SLOW
+    cy.get('#contact input[data-testid="ContactName"]').type('John Wick', { delay: 200 })
+    cy.get('#contact input[data-testid="ContactEmail"]').type('John.Wick@theroundtable.com', { delay: 0 })
 
     cy.then(() => {
       cy.get('#contact button')
@@ -84,8 +104,9 @@ describe('Flaky Suite', { tags: ['@flaky-demo'] }, () => {
         .click()
     })
 
-    cy.wait(1200) // ⏳ C.PASS SLOW
+    cy.wait(1200)
   })
+  
 
 })
 
