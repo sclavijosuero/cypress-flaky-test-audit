@@ -9,10 +9,11 @@ module.exports = defineConfig({
 
   retries: {
     runMode: 0,
-    openMode: 0,
+    openMode: 1,
   },
 
   e2e: {
+    testAuditFolder: 'cypress/reports/flaky-test-audit/',
     setupNodeEvents(on, config) {
       addFlakyTestAuditTasks(on);
 

@@ -1,8 +1,8 @@
 {
   "name": "cypress-flaky-test-audit",
-  "version": "0.0.1",
-  "description": "A Cypress plugin that provides precise, per-command insights into your test runs, including execution order, timing, retries, and pass/fail status. Use it to quickly diagnose flakiness, uncover bottlenecks, and spot commands that never execute.",
-  "main": "index.js",
+  "version": "1.0.0",
+  "description":"Cypress plugin for deep per-command insights, including queue order, execution timing, and visual HTML reports.",
+  "main": "src/test-audit.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,7 +15,9 @@
     "cypress",
     "audit",
     "commnads",
-    "flakyness"
+    "flaky",
+    "flakyness",
+    "analysis"
   ],
   "author": "Sebastian Clavijo Suero",
   "license": "MIT",
