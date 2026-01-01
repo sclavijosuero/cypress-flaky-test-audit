@@ -1,7 +1,7 @@
 {
   "name": "cypress-flaky-test-audit",
   "version": "1.0.0",
-  "description":"Cypress plugin for deep per-command insights, including queue order, execution timing, and visual HTML reports.",
+  "description": "Cypress plugin for deep per-command insights, including queue order, execution timing, and visual HTML reports.",
   "main": "src/test-audit.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -26,6 +26,6 @@
   },
   "homepage": "https://github.com/sclavijosuero/cypress-flaky-test-audit#readme",
   "devDependencies": {
-    "cypress": "^15.7.0"
+    "cypress": "^15.8.1"
   }
 }
