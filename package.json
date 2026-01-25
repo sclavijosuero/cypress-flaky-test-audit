@@ -4,7 +4,9 @@
   "description": "Cypress plugin for deep per-command insights, including queue order, execution timing, and visual HTML reports.",
   "main": "src/test-audit.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deck:open": "cypress open --config baseUrl=https://www.deckofcardsapi.com/",
+    "deck:run": "cypress run --config baseUrl=https://www.deckofcardsapi.com/ --spec \"cypress/e2e/api/positive_path/deck_of_cards_api.cy.js,cypress/e2e/api/negative_path/deck_of_cards_api.cy.js\" --reporter-options reportDir=\"cypress/reports/html/deck_of_cards_api\",reportFilename=\"deck-report\""
   },
   "repository": {
     "type": "git",
@@ -26,6 +28,10 @@
   },
   "homepage": "https://github.com/sclavijosuero/cypress-flaky-test-audit#readme",
   "devDependencies": {
-    "cypress": "^15.8.1"
+    "cypress": "^15.9.0",
+    "cypress-mochawesome-reporter": "^4.0.2",
+    "cypress-on-fix": "^1.1.0",
+    "cypress-plugin-api": "^2.11.2",
+    "cypress-plugin-steps": "^1.2.1"
   }
 }

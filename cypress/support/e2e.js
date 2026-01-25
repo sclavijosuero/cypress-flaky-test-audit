@@ -14,9 +14,12 @@
 // ***********************************************************
 
 // Import the cypress-flaky-test-audit plugin
-import '../../src/test-audit.js'
+import "../../src/test-audit.js";
 
 // Import commands.js using ES2015 syntax:
-import './commands'
+import "./commands";
 
-
+// Imported packages from my Deck of Cards API testing project
+import "cypress-mochawesome-reporter/register";
+import "cypress-plugin-api";
+import "cypress-plugin-steps";
