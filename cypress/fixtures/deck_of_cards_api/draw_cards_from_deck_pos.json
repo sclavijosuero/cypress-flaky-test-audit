@@ -1,0 +1,50 @@
+[
+	{
+		"title": "Draw 1 card at a time from a shuffled deck 10 times",
+		"deckKeyCode": "SDS",
+		"cardsPerDraw": 1,
+		"totalDraws": 10
+	},
+	{
+		"title": "Draw 1 card at a time from a shuffled deck with jokers 20 times",
+		"deckKeyCode": "SDSJ",
+		"cardsPerDraw": 1,
+		"totalDraws": 10
+	},
+	{
+		"title": "Draw 2 card at a time from two shuffled decks 10 times",
+		"deckKeyCode": "DDS",
+		"cardsPerDraw": 2,
+		"totalDraws": 20
+	},
+	{
+		"title": "Draw 2 card at a time from a shuffled deck with jokers 20 times",
+		"deckKeyCode": "DDSJ",
+		"cardsPerDraw": 2,
+		"totalDraws": 20
+	},
+	{
+		"title": "Draw all the cards at once from a shuffled deck",
+		"deckKeyCode": "SDS",
+		"cardsPerDraw": 52,
+		"totalDraws": 1
+	},
+	{
+		"title": "Draw all the cards at once from a shuffled deck with jokers",
+		"deckKeyCode": "SDSJ",
+		"cardsPerDraw": 54,
+		"totalDraws": 1
+	},
+	{
+		"title": "Draw all the cards at once from two shuffled decks",
+		"deckKeyCode": "DDS",
+		"cardsPerDraw": 104,
+		"totalDraws": 1
+	},
+	{
+		"title": "Draw all the cards at once from two shuffled decks with jokers",
+		"deckKeyCode": "DDSJ",
+		"cardsPerDraw": 108,
+		"totalDraws": 1
+	}
+]
