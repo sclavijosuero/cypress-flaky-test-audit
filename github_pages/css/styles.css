@@ -1,0 +1,145 @@
+/* General Styles for all Pages */
+
+/* Box-Model Fix */
+html {
+	box-sizing: border-box;
+
+	/* Set default font size to 10px */
+	font-size: 62.5%;
+}
+
+*,
+*:before,
+*:after {
+	box-sizing: inherit;
+}
+
+/* Main Content covering the Whole Page */
+html,
+body {
+	height: 100%;
+}
+
+/* Body */
+body {
+	background-color: lightyellow;
+	display: flex;
+	flex-direction: column;
+	font-family: Arial, sans-serif;
+	font-size: 1.8rem;
+	line-height: 1.4;
+	margin: 0;
+}
+
+/* Top Header Elements */
+nav {
+	background-color: lightsalmon;
+	border-bottom: 3px solid darksalmon;
+
+	/* For a fixed navigation bar */
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+}
+
+nav a {
+	color: black;
+	display: inline-block;
+	padding-top: 14px;
+	padding-bottom: 14px;
+	padding-left: 20px;
+	padding-right: 20px;
+	text-decoration: none;
+}
+
+nav a:hover {
+	background-color: darksalmon;
+	font-weight: bold;
+}
+
+hgroup {
+	/* To avoid being hidden under the fixed nav */
+	margin-top: 80px;
+	margin-bottom: 20px;
+	text-align: center;
+}
+
+hgroup p {
+	font-size: 1.7rem;
+	font-style: italic;
+	margin-top: -10px;
+	margin-bottom: 0;
+	margin-left: 5%;
+	margin-right: 5%;
+}
+
+/* Main Content */
+main {
+	margin-left: 20%;
+	margin-right: 20%;
+}
+
+/* For the Sticky Footer */
+.content-wrapper {
+	flex: 1 0 auto;
+}
+
+/* Footer */
+footer {
+	background-color: powderblue;
+	border-top: 2px solid paleturquoise;
+
+	/* Flexbox for Footer Content */
+	display: flex;
+	justify-content: space-between;
+	padding: 0 20px;
+}
+
+#footer-text {
+	font-size: 1.5rem;
+	line-height: 1.5;
+}
+
+#footer-email {
+	color: black;
+	text-decoration: none;
+}
+
+#footer-email:hover {
+	text-decoration: underline;
+}
+
+.socials {
+	list-style-type: none;
+	padding: 0;
+}
+
+.socials li {
+	display: inline-block;
+	margin: 0 5px;
+	vertical-align: middle;
+}
+
+.socials img:hover {
+	opacity: 0.9;
+}
+
+/* Adjust content for mobile device screens */
+@media screen and (max-width: 600px) {
+	body {
+		font-size: 1.5rem;
+		line-height: 1.2;
+	}
+
+	hgroup p {
+		font-size: 1.4rem;
+		margin-left: 2%;
+		margin-right: 2%;
+	}
+
+	main {
+		margin-left: 5%;
+		margin-right: 5%;
+	}
+}

@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"rootDir": "./scripts/src",
+		"outDir": "./scripts/dist",
+		"target": "esnext",
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
+		"skipLibCheck": true,
+		"sourceMap": true
+	},
+	"watchOptions": {
+		"watchFile": "useFsEvents",
+		"watchDirectory": "useFsEvents",
+		"fallbackPolling": "dynamicPriority",
+		"synchronousWatchDirectory": true
+	}
+}

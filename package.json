@@ -4,7 +4,10 @@
   "description": "Cypress plugin for deep per-command insights, including queue order, execution timing, and visual HTML reports.",
   "main": "src/test-audit.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "custom:open": "cypress open --config baseUrl=http://localhost:3000/,specPattern=\"**/*.feature\"",
+    "custom:run": "cypress run --config baseUrl=http://localhost:3000/,specPattern=\"**/*.feature\" --reporter-options reportDir=\"cypress/reports/html/custom_website\",reportFilename=\"custom-report\""
   },
   "repository": {
     "type": "git",
@@ -26,6 +29,12 @@
   },
   "homepage": "https://github.com/sclavijosuero/cypress-flaky-test-audit#readme",
   "devDependencies": {
-    "cypress": "^15.8.1"
+    "@badeball/cypress-cucumber-preprocessor": "^24.0.0",
+    "@bahmutov/cypress-esbuild-preprocessor": "^2.2.8",
+    "cypress": "^15.8.1",
+    "cypress-mochawesome-reporter": "^4.0.2",
+    "cypress-on-fix": "^1.1.0",
+    "cypress-real-events": "^1.15.0",
+    "express": "^5.2.1"
   }
 }

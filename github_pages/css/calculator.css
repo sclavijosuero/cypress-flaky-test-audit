@@ -1,0 +1,46 @@
+/* Specific Styles for Calculator Page */
+
+/* Calculator Display */
+#calculator-wrapper {
+	background-color: palegreen;
+	border: 2px solid yellowgreen;
+	border-radius: 8px;
+	display: flex;
+	flex-direction: column;
+	margin: 20px auto;
+	padding: 20px;
+	width: 300px;
+}
+
+/* Calculator Input and Buttons */
+#calc-display {
+	background-color: white;
+	border: 2px solid gray;
+	border-radius: 4px;
+	font-size: 42px;
+	margin-bottom: 20px;
+	padding: 10px;
+	text-align: right;
+}
+
+#calc-btn-grid {
+	display: grid;
+	gap: 10px;
+	grid-template-columns: repeat(4, 1fr);
+	grid-template-rows: repeat(5, 1fr);
+}
+
+#calc-btn-grid button {
+	background-color: white;
+	border: 1px solid black;
+	border-radius: 4px;
+	color: black;
+	cursor: pointer;
+	font-size: 20px;
+	padding: 15px;
+}
+
+#calc-btn-grid button:hover {
+	background-color: black;
+	color: white;
+}

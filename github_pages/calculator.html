@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Calculator</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<link rel="stylesheet" href="css/calculator.css">
+	<script src="scripts/dist/calculator.js" defer></script>
+</head>
+
+<body>
+	<div class="content-wrapper">
+		<header>
+			<!-- Navigation links for the website -->
+
+			<nav>
+				<a href="index.html" data-cy="calc-nav-home-link">Home</a>
+				<a href="calculator.html" data-cy="calc-nav-calc-link">Calculator</a>
+				<a href="text_to_file.html" data-cy="calc-nav-text-link">Text to File</a>
+			</nav>
+
+			<!-- Website title and tagline -->
+			<hgroup>
+				<h1 data-cy="calc-header">Calculator</h1>
+				<p data-cy="calc-tagline">A simple calculator app to test simple math operations!</p>
+			</hgroup>
+		</header>
+
+		<main>
+			<!-- Calculator section -->
+			<div id="calculator-wrapper">
+				<input type="text" class="calculator-section" id="calc-display" data-cy="calc-display" readonly />
+				<div class="calculator-section" id="calc-btn-grid">
+					<button type="button" id="btn-clear" data-cy="btn-clear">C</button>
+					<button type="button" id="btn-clear-entry" data-cy="btn-clear-entry">CE</button>
+					<button type="button" id="btn-modulo" data-cy="btn-modulo">%</button>
+					<button type="button" id="btn-divide" data-cy="btn-divide">÷</button>
+
+					<button type="button" id="btn-7" data-cy="btn-7">7</button>
+					<button type="button" id="btn-8" data-cy="btn-8">8</button>
+					<button type="button" id="btn-9" data-cy="btn-9">9</button>
+					<button type="button" id="btn-multiply" data-cy="btn-multiply">x</button>
+
+					<button type="button" id="btn-4" data-cy="btn-4">4</button>
+					<button type="button" id="btn-5" data-cy="btn-5">5</button>
+					<button type="button" id="btn-6" data-cy="btn-6">6</button>
+					<button type="button" id="btn-subtract" data-cy="btn-subtract">-</button>
+
+					<button type="button" id="btn-1" data-cy="btn-1">1</button>
+					<button type="button" id="btn-2" data-cy="btn-2">2</button>
+					<button type="button" id="btn-3" data-cy="btn-3">3</button>
+					<button type="button" id="btn-add" data-cy="btn-add">+</button>
+
+					<button type="button" id="btn-sign-change" data-cy="btn-sign-change">±</button>
+					<button type="button" id="btn-0" data-cy="btn-0">0</button>
+					<button type="button" id="btn-decimal" data-cy="btn-decimal">.</button>
+					<button type="button" id="btn-equals" data-cy="btn-equals">=</button>
+				</div>
+			</div>
+		</main>
+	</div>
+
+
+	<footer>
+		<!-- Footer text -->
+		<p id="footer-text" data-cy="calc-footer-text">© 2025 by Alben Trang<br><a href="mailto:albentrang@gmail.com"
+				id="footer-email" data-cy="calc-footer-email">albentrang@gmail.com</a></p>
+
+		<!-- Social media links -->
+		<ul class="socials">
+			<li>
+				<a href="https://www.linkedin.com/in/albentrang/" target="_blank" id="linkedin-link"
+					data-cy="calc-footer-linkedin-link">
+					<img src="img/icons/LI-In-Bug-57x48.png" srcset="img/icons/LI-In-Bug-127x108.png 2x"
+						alt="LinkedIn icon that links to my LinkedIn profile" width="57" height="48" />
+				</a>
+			</li>
+			<li>
+				<a href="https://github.com/albentrang/cypress-portfolio" target="_blank" id="github-link"
+					data-cy="calc-footer-github-link">
+					<img src="img/icons/github-mark-48x48.png" srcset="img/icons/github-mark-108x108.png 2x"
+						alt="GitHub icon that links to this website's GitHub repository" width="48" height="48" />
+				</a>
+			</li>
+		</ul>
+	</footer>
+</body>
+
+</html>

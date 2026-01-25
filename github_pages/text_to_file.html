@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Text to File Downloader</title>
+	<link rel="stylesheet" href="css/styles.css">
+	<link rel="stylesheet" href="css/text_to_file.css">
+	<script src="scripts/dist/text_to_file.js" defer></script>
+</head>
+
+<body>
+	<div class="content-wrapper">
+		<header>
+			<!-- Navigation links for the website -->
+			<nav>
+				<a href="index.html" data-cy="text-nav-home-link">Home</a>
+				<a href="calculator.html" data-cy="text-nav-calc-link">Calculator</a>
+				<a href="text_to_file.html" data-cy="text-nav-text-link">Text to File</a>
+			</nav>
+
+			<!-- Website title and tagline -->
+			<hgroup>
+				<h1 data-cy="text-header">Text to File Downloader</h1>
+				<p data-cy="text-tagline">Turn text into different files to download!</p>
+			</hgroup>
+		</header>
+
+		<main>
+			<form id="text-to-file-form" class="text-to-file-form" autocomplete="on">
+				<!-- Text input and label -->
+				<label id="text-input-label" for="text-input" data-cy="text-input-label">Enter your text (0/300):</label>
+				<textarea id="text-input-area" name="text-input" maxlength="300" rows="12" cols="40" required
+					data-cy="text-input-area"></textarea>
+
+				<!-- File name field -->
+				<label id="file-name-label" for="file-name" data-cy="file-name-label">Enter file name (0/30):</label>
+				<input id="file-name-input" type="text" name="file-name" maxlength="30" required data-cy="file-name-input">
+
+				<!-- File type label -->
+				<label id="file-type-label" for="file-type" data-cy="file-type-label">Choose file type:</label>
+
+				<!-- File type selection dropdown and download button -->
+				<div class="flex-container">
+					<select class="flex-item" id="file-type-select" name="file-type" data-cy="file-type-select">
+						<option value="txt">Text (.txt)</option>
+						<option value="md">Markdown (.md)</option>
+						<option value="csv">CSV (.csv)</option>
+						<option value="json">JSON (.json)</option>
+					</select>
+					<button type="button" class="flex-item" id="download-btn" data-cy="download-btn">Download</button>
+				</div>
+				<p id="error-message" data-cy="error-message"></p>
+			</form>
+		</main>
+
+	</div>
+	<footer>
+		<!-- Footer text -->
+		<p id="footer-text" data-cy="text-footer-text">© 2025 by Alben Trang<br><a href="mailto:albentrang@gmail.com"
+				id="footer-email" data-cy="text-footer-email">albentrang@gmail.com</a></p>
+
+		<!-- Social media links -->
+		<ul class="socials">
+			<li>
+				<a href="https://www.linkedin.com/in/albentrang/" target="_blank" id="linkedin-link"
+					data-cy="text-footer-linkedin-link">
+					<img src="img/icons/LI-In-Bug-57x48.png" srcset="img/icons/LI-In-Bug-127x108.png 2x"
+						alt="LinkedIn icon that links to my LinkedIn profile" width="57" height="48" />
+				</a>
+			</li>
+			<li>
+				<a href="https://github.com/albentrang/cypress-portfolio" target="_blank" id="github-link"
+					data-cy="text-footer-github-link">
+					<img src="img/icons/github-mark-48x48.png" srcset="img/icons/github-mark-108x108.png 2x"
+						alt="GitHub icon that links to this website's GitHub repository" width="48" height="48" />
+				</a>
+			</li>
+		</ul>
+	</footer>
+</body>
+
+</html>
