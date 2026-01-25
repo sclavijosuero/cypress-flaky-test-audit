@@ -1,0 +1,49 @@
+/* Specific Styles for Homepage */
+section {
+	margin-bottom: 80px;
+}
+
+/* Style the buttons */
+button {
+	background-color: lavender;
+	border: none;
+	border-radius: 4px;
+	color: black;
+	cursor: pointer;
+	font-size: 16px;
+	padding: 12px 16px;
+}
+
+button:hover {
+	background-color: mediumpurple;
+}
+
+/* Test Pages Button List */
+.test-pages-list {
+	display: flex;
+	gap: 20px;
+	list-style-type: none;
+	padding: 0;
+}
+
+/* Test Results List */
+.test-results {
+	list-style-type: none;
+	padding: 0;
+}
+
+.test-results li {
+	margin-bottom: 10px;
+	margin-left: 30px;
+}
+
+.test-results a {
+	color: darkblue;
+	padding: 2px 4px;
+	text-decoration: none;
+}
+
+.test-results a:hover {
+	background-color: mediumspringgreen;
+	border-radius: 5px;
+}
