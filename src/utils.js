@@ -120,7 +120,7 @@ ${testStatus} ${testDescription} | TEST TITLE: "${test.title}"${currentRetry} | 
 
 const getCommandType = (commandInfo) => {
     return commandInfo.query ? 'Query'
-        : commandInfo.type === 'assertion' ? (Cypress.env('flakyTestAuditConsoleType') === 'list' ? 'Assertion' : ' └─ Assertion')
+        : commandInfo.type === 'assertion' ? (Cypress.expose('flakyTestAuditConsoleType') === 'list' ? 'Assertion' : ' └─ Assertion')
         : `Command (${commandInfo.type})`;
 }
 

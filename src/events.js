@@ -9,7 +9,7 @@ let currentCommandId = null // Used to handle retries (event 'command:retry')
 
 let executionOrder
 
-if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTestAudit') === 'true') {
+if (Cypress.expose('enableFlakyTestAudit') === true || Cypress.expose('enableFlakyTestAudit') === 'true') {
 
     Cypress.on('test:before:run', (test) => {
         // console.log('................. test:before:run ')

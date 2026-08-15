@@ -9,15 +9,15 @@ const testAuditResults = new Map()
 // (test-audir.js TO BE IMPORTED IN e2e.js FILE BEFORE ANYTHING ELSE)
 // **********************************************************************************
 
-if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTestAudit') === 'true') {
+if (Cypress.expose('enableFlakyTestAudit') === true || Cypress.expose('enableFlakyTestAudit') === 'true') {
 
 
     // ----------------------------------------------------------------------------------
     // CONSTANTS
     // ----------------------------------------------------------------------------------
 
-    const testSlownessThreshold = Cypress.env('testSlownessThreshold') ?? 5000   // Default 5 seconds
-    const commandSlownessThreshold = Cypress.env('commandSlownessThreshold') ?? 1500 // Default 1.5 seconds
+    const testSlownessThreshold = Cypress.expose('testSlownessThreshold') ?? 5000   // Default 5 seconds
+    const commandSlownessThreshold = Cypress.expose('commandSlownessThreshold') ?? 1500 // Default 1.5 seconds
 
 
     // ----------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
         const commandsData = { commands, commandSlownessThreshold }
 
 
-        if (Cypress.env('flakyTestAuditConsoleType') === 'list') {
+        if (Cypress.expose('flakyTestAuditConsoleType') === 'list') {
             // Display list of Audit Results in the browser console
             Utils.displayTestAuditAsListBrowserConsole(testData, commandsData)
             // Display list of Audit Results in the terminal console
@@ -87,7 +87,7 @@ if (Cypress.env('enableFlakyTestAudit') === true || Cypress.env('enableFlakyTest
 
     // Create the html report for all test and retries executed in the suite
     after(() => {
-        if (Cypress.env('createFlakyTestAuditReport') === true || Cypress.env('createFlakyTestAuditReport') === 'true') {
+        if (Cypress.expose('createFlakyTestAuditReport') === true || Cypress.expose('createFlakyTestAuditReport') === 'true') {
             // If the report is configured to be created, create it
             // sending the spec and the testAuditResults map
             Report.createSuiteAuditHtmlReport(Cypress.spec, testAuditResults)

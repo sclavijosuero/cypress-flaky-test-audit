@@ -8,18 +8,8 @@ It helps identify flaky tests, performance bottlenecks, and commands that don’
 
 Related reading: [The async nature of Cypress – don’t mess with the timelines in your Cypress tests (dual verse)](https://dev.to/sebastianclavijo/the-async-nature-of-cypress-dont-mess-with-the-timelines-in-your-cypress-tests-dual-verse-3ehh)
 
-## Table of Contents
 
-- [Main Features](#main-features)
-- [Compatibility](#compatibility)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Audit Results](#audit-results)
-- [License](#license)
-- [Contributing](#contributing)
-- [Changelog](#changelog)
-
-## Main Features
+## MAIN FEATURES
 
 ✔️ **Command Queue Tracing** – Captures enqueue order, runnable type, nested relationships, and execution transitions for every Cypress command and assertion.
 
@@ -43,22 +33,62 @@ Related reading: [The async nature of Cypress – don’t mess with the timeline
    - **Visual cues**: Quickly spot failures, queued-but-never-run commands, and slow commands (based on your thresholds).
    - **Fully mobile responsive**: 100% responsive to mobile layouts.
 
-✔️ **Minimal setup** – a single import in `cypress/support/e2e.js` plus one helper in `cypress.config.js`.
+✔️ **Fully prepared for Cypress v16**: Configuration via **_exposed variables_** (for Cypress v15.10.0+).  _(NEW)_
 
-## Compatibility
 
-- **Cypress**: built and verified with Cypress `^15.7.0`. The plugin relies on modern event hooks and events (`test:before:run`, command lifecycle events), so Cypress `13+` is recommended.
+## TABLE OF CONTENT
+
+- [Main Features](#main-features)
+- [Compatibility](#compatibility)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Audit Results](#audit-results)
+  - [Browser Console](#browser-console)
+    - [Browser Console Table Format](#browser-console-table-format)
+    - [Browser Console List Format](#browser-console-list-format)
+  - [Terminal Console](#terminal-console)
+    - [Terminal Console Table Format](#terminal-console-table-format)
+    - [Terminal Console List Format](#terminal-console-list-format)
+  - [HTML Report](#html-report)
+    - [HTML Report - Overview](#html-report---overview)
+    - [Commands and Assertions](#commands-and-assertions)
+    - [Hooks](#hooks)
+    - [Execution path VS Queued path](#execution-path-vs-queued-path)
+    - [Commands Tooltips and box width](#commands-tooltips-and-box-width)
+    - [Examples of HTML Report](#examples-of-html-report)
+- [License](#license)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
+- [External References](#external-references)
+
+
+## COMPATIBILITY
+
 - **Node.js**: match the version supported by your installed Cypress release (Node 16.17+ for Cypress 15).
 - **Browsers/Runners**: agnostic – works in headed/headless modes, local or CI, Chromium or Firefox.
 - **HTML report graphs**: rendered with the CDN bundle of [vis-network](https://github.com/visjs/vis-network), so an internet connection is required the first time you open a newly generated report to load the assets.
+- **Cypress**:
+  - `cypress_flaky_test_audit v1.0.0` for `Cypress 15.0.0 - 15.9.0`
+  - `cypress_flaky_test_audit v2.0.0` for Cypress `^15.10.0+` (prepared for `Cypress v16`)
 
-## Installation
+## INSTALLATION
 
 ```bash
 npm install --save-dev cypress-flaky-test-audit
 ```
 
-1. **Register the plugin tasks** and the audit report folder inside `cypress.config.js` (or `cypress.config.ts`):
+
+## CONFIGURATION
+
+1. **Register the plugin tasks** and the **audit report folder** inside `cypress.config.{js,ts}`.
+
+   Plugin task: `addFlakyTestAuditTasks`,
+
+   | Config var | Type | Default | Description |
+   | --- | --- | --- | --- |
+   | `testAuditFolder` *(Cypress config key)* | `string` | `cypress/reports/flaky-test-audit/` | Destination for generated HTML files. |
+
+   Example:
 
     ```js
     const addFlakyTestAuditTasks = require('cypress-flaky-test-audit/src/tasks');
@@ -79,65 +109,49 @@ npm install --save-dev cypress-flaky-test-audit
     };
     ```
 
-2. **Enable the audit at runtime** by importing the main hook file at the very beginning of your `cypress/support/e2e.js` file (this will ensure you do not leave out any `beforeEach` and `afterEach` hooks from the test audit for the suite):
+2. **Configure features** using Cypress _exposed variables_.
+
+   Set these keys as  exposed variables via `Cypress.expose()` in your `cypress.config.{js,ts}`. You can also pass them as exposed CLI flags.
+
+   | Exposed var | Type | Default | Description |
+   | --- | --- | --- | --- |
+   | `enableFlakyTestAudit` | `boolean` | `false` | Master switch. When disabled, no listeners are registered. |
+   | `flakyTestAuditConsoleType` | `"list" \| "table"` | `table` | Choose how results are printed in the browser and terminal consoles. |
+   | `testSlownessThreshold` | `number` (ms) | `5000` | Duration above which a test is marked as slow. |
+   | `commandSlownessThreshold` | `number` (ms) | `1500` | Duration above which a command row is annotated as slow. |
+   | `createFlakyTestAuditReport` | `boolean` | `false` | Enable HTML report generation after the suite finishes. |
+
+
+   Example as exposed variable in the Cypress config file `cypress.config.js`:
+
+    ```js
+    module.exports = defineConfig({
+      expose: {
+        enableFlakyTestAudit: true,
+        flakyTestAuditConsoleType: "table",
+        createFlakyTestAuditReport: true,
+        testSlownessThreshold: 4000,
+        commandSlownessThreshold: 1000
+      },
+      // ...
+    })
+    ```
+
+   Example as CLI Flags:
+
+    ```bash
+    cypress run --expose enableFlakyTestAudit=true,createFlakyTestAuditReport=false
+    ```
+
+
+3. **Enable the audit at runtime** by importing the main hook file at the very beginning of your `cypress/support/e2e.js` file (this will ensure you do not leave out any `beforeEach` and `afterEach` hooks from the test audit for the suite):
 
     ```js
     import 'cypress-flaky-test-audit';
     ```
 
-3. **Toggle the feature** using Cypress environment variables (see [Configuration](#configuration)).
 
-## Configuration
-
-### Cypress Config File
-
-Set these keys via `cypress.config.{js,ts}` (as a property in the `module.exports`, or in the `e2e` object).
-
-| Config var | Type | Default | Description |
-| --- | --- | --- | --- |
-| `testAuditFolder` *(Cypress config key)* | `string` | `cypress/reports/flaky-test-audit/` | Destination for generated HTML files. |
-
-Example `cypress.config.js`:
-
-```js
-module.exports = {
-  testAuditFolder: 'cypress/reports/flaky-test-audit/',
-
-  e2e: {
-    setupNodeEvents(on, config) {
-      // ...
-    },
-  },
-};
-```
-
-### Environment Variables
-
-Set these keys via `cypress.config.{js,ts}` (`env` object), `cypress.env.json`, or CLI `--env` flags.
-
-| Env var | Type | Default | Description |
-| --- | --- | --- | --- |
-| `enableFlakyTestAudit` | `boolean` | `false` | Master switch. When disabled, no listeners are registered. |
-| `flakyTestAuditConsoleType` | `"list" \| "table"` | `table` | Choose how results are printed in the browser and terminal consoles. |
-| `testSlownessThreshold` | `number` (ms) | `5000` | Duration above which a test is marked as slow. |
-| `commandSlownessThreshold` | `number` (ms) | `1500` | Duration above which a command row is annotated as slow. |
-| `createFlakyTestAuditReport` | `boolean` | `false` | Enable HTML report generation after the suite finishes. |
-| `testAuditFolder` | `string` | `cypress/reports/flaky-test-audit/` | Destination for generated HTML files. |
-
-Example `cypress.env.json`:
-
-```json
-{
-  "enableFlakyTestAudit": true,
-  "createFlakyTestAuditReport": true,
-  "flakyTestAuditConsoleType": "table",
-  "testSlownessThreshold": 8000,
-  "commandSlownessThreshold": 2000
-}
-```
-
-
-## Audit Results
+## AUDIT RESULTS
 
 Depending on which outputs you enable, the audit data is presented in three different ways: browser console, terminal console, HTML report.
 
@@ -351,20 +365,41 @@ Each node in the graph is clickable. When you click a **command**, **query**, or
 ![ Fully mobile responsive](assets/html-report-mobile-responsive-placeholder.png)
 
 
-## License
+## LICENSE
 
-Released under the [MIT License](LICENSE).
+MIT License. See the **[LICENSE.md](LICENSE.md "LICENSE.md")**.
 
-## Contributing
+## CONTRIBUTING
 
-Contributions are welcome! If you find a bug or want to propose an improvement:
+First off, thanks for taking the time to contribute!
 
-1. Open an issue describing the motivation and expected behavior.
-2. Fork the repo and create a branch: `git checkout -b feat/my-improvement`.
-3. Run the Cypress suite you care about with the audit enabled to validate changes.
-4. Submit a PR referencing the issue. Please include screenshots of the report if the UI changes.
+To contribute, please follow the process described in **[CONTRIBUTING.md](CONTRIBUTING.md "CONTRIBUTING.md")**
 
-## Changelog
+And if you like the project but just don't have the time to contribute, that's fine. There are other easy ways to support the project and show your appreciation, which we would also be very happy about:
+- Star the project
+- Promote it on social media
+- Refer this project in your project's readme
+- Mention the project at local meetups and tell your friends/colleagues
+- Buying me a coffee or contributing to a training session, so I can keep learning and sharing cool stuff with all of you.
+
+<a href="https://www.buymeacoffee.com/sclavijosuero" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 150px !important;" ></a>
+
+Thank you for your support!
+
+## CHANGELOG
+
+- **2.0.0** – Replaced configuration via _environment variables_ with _exposed variables_ (Breaking change).
 
 - **1.0.0** – Initial public beta with console outputs and interactive HTML report.
+
+
+## EXTERNAL REFERENCES
+
+- [**Software Testing Weekly**](https://softwaretestingweekly.com/ "Software Testing Weekly") — [Issue 298, Jan 2026](https://cypresstips.substack.com/p/cypress-tips-january-2026 "Issue 298, Jan 2026")
+
+- [**Gleb Bahmutov**](https://www.linkedin.com/in/bahmutov/ "Gleb Bahmutov") — [Cypress Tips Newsletter, Jan 2026](https://cypresstips.substack.com/p/cypress-tips-january-2026 "Cypress Tips Newsletter, Jan 2026")
+
+- [**Ministry of Testing** — Cypress Content](https://www.ministryoftesting.com/software-testing-tools/cypress "Ministry of Testing — Cypress Content")
+
+- [**David Ingraham**](https://www.linkedin.com/in/dingraham01// "David Ingraham") — [Your Cypress Tests Are Slower Than You Think](https://medium.com/@dingraham01/your-cypress-tests-are-slower-than-you-think-218cb74761fd "Your Cypress Tests Are Slower Than You Think")
 

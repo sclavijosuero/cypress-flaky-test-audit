@@ -1094,7 +1094,7 @@ function generateGraphHtml(resultsGraph, graphContainerId) {
     const commandSlownessThreshold = (() => {
         try {
             if (typeof Cypress !== 'undefined' && Cypress?.env) {
-                const value = Cypress.env('commandSlownessThreshold');
+                const value = Cypress.expose('commandSlownessThreshold');
                 return typeof value === 'number' && Number.isFinite(value) ? value : 1500;
             }
         } catch (e) {
